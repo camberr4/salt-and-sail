@@ -359,6 +359,7 @@ func _art_quad(tex: Texture2D, size: Vector2, mirror_v: bool = false) -> MeshIns
 	m.roughness = 0.85
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
 
@@ -371,24 +372,29 @@ func _apply_art() -> void:
 		art_hull.position = Vector3(0, DECK + 0.05, 0)
 		add_child(art_hull)
 		hull.visible = false
+	# Sails: the painted spar runs along the ship's centreline and the cloth
+	# swells to leeward, so the quad's near edge sits just inside the rail.
 	var tm := Art.tex("ship/sail_main")
 	if tm != null:
 		var asp := float(tm.get_height()) / maxf(float(tm.get_width()), 1.0)
-		art_main = _art_quad(tm, Vector2(4.4, 4.4 / asp))
-		art_main.position = Vector3(-2.2, 2.6, 4.4 / asp * 0.18)
+		var w := 3.9 / asp
+		art_main = _art_quad(tm, Vector2(3.9, w))
+		art_main.position = Vector3(-1.95, 2.3, w * 0.5 - 0.12)
 		main_pivot.add_child(art_main)
 		main_mesh.visible = false
 	var tf := Art.tex("ship/sail_fore")
 	if tf != null:
 		var asp2 := float(tf.get_height()) / maxf(float(tf.get_width()), 1.0)
-		art_fore = _art_quad(tf, Vector2(3.0, 3.0 / asp2))
-		art_fore.position = Vector3(-1.5, 2.3, 3.0 / asp2 * 0.18)
+		var w2 := 2.7 / asp2
+		art_fore = _art_quad(tf, Vector2(2.7, w2))
+		art_fore.position = Vector3(-1.35, 2.0, w2 * 0.5 - 0.1)
 		fore_pivot.add_child(art_fore)
 		fore_mesh.visible = false
 	var tj := Art.tex("ship/sail_jib")
 	if tj != null:
 		var asp3 := float(tj.get_height()) / maxf(float(tj.get_width()), 1.0)
-		art_jib = _art_quad(tj, Vector2(3.4, 3.4 / asp3))
-		art_jib.position = Vector3(L * 0.82, DECK + 1.3, 3.4 / asp3 * 0.25)
+		var w3 := 2.6 / asp3
+		art_jib = _art_quad(tj, Vector2(2.6, w3))
+		art_jib.position = Vector3(L * 0.86, DECK + 1.1, w3 * 0.5 - 0.05)
 		sails_root.add_child(art_jib)
 		jib_node.visible = false
