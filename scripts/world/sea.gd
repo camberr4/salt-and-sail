@@ -11,6 +11,7 @@ signal rumor_added(poi: Poi)
 signal weather_changed(state: int)
 signal weather_warning(next_state: int)
 signal edge_reached
+signal event_requested(ev: Dictionary, poi: Poi)
 
 const VISION := 900.0
 
@@ -53,6 +54,10 @@ var _flare_tick := 0.0
 var _creak_t := 6.0
 var _whirl_cd := 0.0
 var _edge_cd := 0.0
+var event_active := false
+var _event_cd := 45.0
+var _recent_events: Array = []
+var _ev_rng := RandomNumberGenerator.new()
 var _rng := RandomNumberGenerator.new()
 
 
@@ -134,6 +139,9 @@ func _finish_world() -> void:
 	ambient.gen = gen
 	ambient.fx = fx
 	gold = 0
+	event_active = false
+	_event_cd = 40.0
+	_ev_rng.randomize()
 	trail.clear()
 	elapsed = 0.0
 	stats_pois_found = 0
@@ -194,6 +202,7 @@ func _process(delta: float) -> void:
 			trail.remove_at(0)
 	_update_whirlpools(dt)
 	_update_edge(dt)
+	_update_sea_events(dt)
 	_update_vision(dt)
 	_update_pois(dt)
 	_update_camera(dt)
@@ -377,8 +386,11 @@ func _on_poi_discovered(p: Poi) -> void:
 
 
 func add_gold(n: int) -> void:
-	gold += n
-	Game.stats["total_gold"] += n
+	if n >= 0:
+		gold += n
+		Game.stats["total_gold"] += n
+	else:
+		gold = maxi(0, gold + n)
 	gold_changed.emit(gold)
 
 
@@ -388,6 +400,14 @@ func _visit(p: Poi) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p.data["seed"]
 	var res := {"title": p.poi_name, "text": p.interact_text(rng), "gold": 0, "kind": p.kind, "rumor": ""}
+	# Most visits become a short encounter with a choice.
+	if not title_mode and not event_active and p.kind != "lighthouse" and p.kind != "treasure" and not p.data.get("home", false) and _ev_rng.randf() < 0.85:
+		var ev := EventDb.pick(p.kind, weather.state, weather.cur["night"], _ev_rng, _recent_events)
+		if not ev.is_empty():
+			p.visited = true
+			Sfx.play("arrive", -4.0)
+			_start_event(ev, p)
+			return
 	var reward := 0
 	match p.kind:
 		"treasure":
@@ -418,6 +438,58 @@ func _visit(p: Poi) -> void:
 		Sfx.play("arrive", -4.0)
 	Game.haptic(35, 0.4)
 	poi_visited.emit(p, res)
+
+
+func _start_event(ev: Dictionary, poi: Poi) -> void:
+	event_active = true
+	_recent_events.append(ev["id"])
+	if _recent_events.size() > 4:
+		_recent_events.pop_front()
+	event_requested.emit(ev, poi)
+
+
+## Random encounters on open water, spaced out so sailing stays the main thing.
+func _update_sea_events(dt: float) -> void:
+	if title_mode or event_active:
+		return
+	_event_cd -= dt
+	if _event_cd > 0.0:
+		return
+	if ship.speed < 40.0 or gen.nearest_land_distance(ship.position, 520.0) < 500.0:
+		return
+	_event_cd = _ev_rng.randf_range(70.0, 120.0)
+	var ev := EventDb.pick("sea", weather.state, weather.cur["night"], _ev_rng, _recent_events)
+	if not ev.is_empty():
+		_start_event(ev, null)
+
+
+## Applies the chosen outcome of an encounter and releases the lock.
+func finish_event(o: Dictionary, poi: Poi) -> void:
+	event_active = false
+	var g: int = o.get("gold", 0)
+	if g != 0:
+		add_gold(g)
+		if g > 0:
+			fx.burst_gold(ship.position, 16)
+	if o.get("rumor", false):
+		var src: Poi = poi
+		if src == null:
+			src = nearest_poi_dir()
+		if src != null:
+			_make_rumor(src)
+	var r: int = o.get("reveal", 0)
+	if r > 0:
+		_start_flare_at(ship.position, r)
+	if o.has("weather"):
+		weather.set_state(int(o["weather"]), 70.0)
+
+
+func _start_flare_at(pos: Vector2, radius: float) -> void:
+	_flare_pos = pos
+	_flare = 0.0
+	var tw := create_tween()
+	tw.tween_method(func(v: float): _flare = v, 300.0, radius, 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): _flare = 0.0)
 
 
 func _start_flare(pos: Vector2) -> void:

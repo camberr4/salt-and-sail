@@ -125,10 +125,9 @@ Match the reference UI: dark glass chips, aged parchment, brass rims.
 
 ## 7. Event and encounter illustrations. Folder `assets/art/events/`
 
-Portrait 1080x1350, painted illustration (these are the "stills you provide"; I
-build the screens around them). Same STYLE block plus "digital painting
-illustration, cinematic framing". Examples to start: `ev_merchant.png`,
-`ev_fog_ship.png`, `ev_ghost_lights.png`, `ev_sea_serpent.png`, `ev_harbour_tavern.png`.
+Portrait, **1080x1350**, subject centred (the screen crops to fill). Files, one per event in `scripts/events/event_db.gd`:
+`ev_merchant`, `ev_fog_ship`, `ev_ghost_lights`, `ev_sea_serpent`, `ev_castaway`, `ev_crate`, `ev_dolphins`, `ev_harbour_tavern`, `ev_wreck_dive`, `ev_bottle`, `ev_skull`, `ev_wisps` (all `.png`).
+Each event already has a code-painted placeholder, so these can arrive in any order. Ready-to-paste prompts for every file are in the chat history of the session that produced this doc, and the scene for each is the event's title in event_db.gd.
 
 ## 8. Title key art. `assets/art/title_bg.png`
 

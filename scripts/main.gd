@@ -14,6 +14,8 @@ var pause_menu: PauseMenu
 var settings_panel: SettingsPanel
 var chart_overlay: ChartOverlay
 var summary: SummaryPanel
+var event_screen: EventScreen
+var _event_poi: Poi
 var state := S.BOOT
 
 var _frames := 0
@@ -35,6 +37,7 @@ func _ready() -> void:
 	sea.fade = 1.0
 	sea.weather_changed.connect(_on_weather_changed)
 	sea.poi_visited.connect(func(_p, _r): pass)
+	sea.event_requested.connect(_on_event)
 
 	hud_layer = CanvasLayer.new()
 	hud_layer.layer = 10
@@ -175,6 +178,26 @@ func resume_game() -> void:
 	state = S.VOYAGE
 
 
+func _on_event(ev: Dictionary, poi: Poi) -> void:
+	if state != S.VOYAGE:
+		sea.event_active = false
+		return
+	state = S.PAUSED
+	get_tree().paused = true
+	joystick.cancel()
+	_event_poi = poi
+	Sfx.play("arrive", -4.0)
+	event_screen = EventScreen.new()
+	event_screen.setup(ev, sea.gold)
+	_menu_root().add_child(event_screen)
+	event_screen.finished.connect(func(o: Dictionary):
+		event_screen.queue_free()
+		event_screen = null
+		get_tree().paused = false
+		state = S.VOYAGE
+		sea.finish_event(o, _event_poi))
+
+
 func _show_pause() -> void:
 	_free_menus()
 	pause_menu = PauseMenu.new()
@@ -270,6 +293,8 @@ func _on_back() -> void:
 		S.VOYAGE:
 			pause_game()
 		S.PAUSED:
+			if event_screen != null:
+				return
 			if settings_panel != null:
 				settings_panel.closed.emit()
 			elif chart_overlay != null:
@@ -382,6 +407,12 @@ func _dev_hooks() -> void:
 	if Dev.has("watch") and _frames % 15 == 0 and state == S.VOYAGE:
 		var wp: Vector2 = Dev.get_vec("watch")
 		print("f=", _frames, " dist=", snappedf(sea.ship.position.distance_to(wp), 1.0), " speed=", snappedf(sea.ship.speed, 1.0), " ext=", snappedf(sea.ship.external.length(), 1.0), " shake=", snappedf(sea.shake, 0.01))
+	if Dev.has("event") and _frames == 60 and state == S.VOYAGE:
+		for e in EventDb.ALL:
+			if e["id"] == Dev.get_str("event"):
+				sea._start_event(e, null)
+	if Dev.has("pick") and _frames == 80 and event_screen != null:
+		event_screen._choose(event_screen.ev["choices"][int(Dev.get_num("pick"))])
 	if Dev.has("dbg") and _frames == 40:
 		print("vp ", get_viewport().get_visible_rect().size, " ui_root ", hud.get_parent().size, " hud ", hud.size, " title ", title.size, " joystick ", joystick.size)
 	if Dev.has("shot"):
