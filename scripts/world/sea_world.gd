@@ -25,7 +25,7 @@ var _mode := -1  # 0 direct, 1 sub viewport
 static var _noise_tex: Texture2D
 
 
-func setup(p_gen: WorldGen) -> void:
+func setup(p_gen: WorldGen, render2d: bool = true) -> void:
 	gen = p_gen
 	fog = FogOfWar.new()
 	height_tex = ImageTexture.create_from_image(gen.height_image)
@@ -46,9 +46,10 @@ func setup(p_gen: WorldGen) -> void:
 	_quad.position = Vector2.ZERO
 	_quad.size = Vector2(WorldGen.WORLD_W, WorldGen.WORLD_H)
 	_quad.material = world_mat
-	apply_quality()
-	if not Game.settings_changed.is_connected(apply_quality):
-		Game.settings_changed.connect(apply_quality)
+	if render2d:
+		apply_quality()
+		if not Game.settings_changed.is_connected(apply_quality):
+			Game.settings_changed.connect(apply_quality)
 
 
 func _exit_tree() -> void:

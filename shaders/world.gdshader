@@ -40,9 +40,9 @@ float luma(vec3 c) {
 }
 
 vec3 grass_color(float b) {
-	vec3 lush = vec3(0.36, 0.64, 0.26);
-	vec3 trop = vec3(0.44, 0.72, 0.28);
-	vec3 dry = vec3(0.66, 0.62, 0.28);
+	vec3 lush = vec3(0.42, 0.70, 0.22);
+	vec3 trop = vec3(0.36, 0.74, 0.30);
+	vec3 dry = vec3(0.62, 0.70, 0.27);
 	vec3 rock = vec3(0.47, 0.45, 0.41);
 	vec3 c = mix(lush, trop, smoothstep(0.0, 0.34, b));
 	c = mix(c, dry, smoothstep(0.34, 0.67, b));
@@ -50,9 +50,9 @@ vec3 grass_color(float b) {
 }
 
 vec3 forest_color(float b) {
-	vec3 lush = vec3(0.10, 0.36, 0.17);
-	vec3 trop = vec3(0.05, 0.43, 0.26);
-	vec3 dry = vec3(0.45, 0.36, 0.14);
+	vec3 lush = vec3(0.07, 0.33, 0.13);
+	vec3 trop = vec3(0.03, 0.40, 0.24);
+	vec3 dry = vec3(0.20, 0.40, 0.12);
 	vec3 rock = vec3(0.32, 0.31, 0.30);
 	vec3 c = mix(lush, trop, smoothstep(0.0, 0.34, b));
 	c = mix(c, dry, smoothstep(0.34, 0.67, b));
@@ -84,11 +84,22 @@ void fragment() {
 		float e = h - 0.5;
 		float shade = 0.5;
 		float slope = 0.0;
+		float ao = 0.0;
+		float cast = 0.0;
+		vec2 light = normalize(vec2(-0.55, -0.83));
 		if (g_quality > 0.5) {
 			float hx = texture(height_tex, uv + vec2(texel.x, 0.0)).r - texture(height_tex, uv - vec2(texel.x, 0.0)).r;
 			float hy = texture(height_tex, uv + vec2(0.0, texel.y)).r - texture(height_tex, uv - vec2(0.0, texel.y)).r;
 			shade = clamp(0.5 - (hx + hy) * 2.6, 0.0, 1.0);
 			slope = length(vec2(hx, hy));
+			if (g_quality > 1.5) {
+				float avg = (texture(height_tex, uv + vec2(texel.x * 2.0, 0.0)).r + texture(height_tex, uv - vec2(texel.x * 2.0, 0.0)).r + texture(height_tex, uv + vec2(0.0, texel.y * 2.0)).r + texture(height_tex, uv - vec2(0.0, texel.y * 2.0)).r) * 0.25;
+				ao = clamp((avg - hs.r) * 7.0, 0.0, 0.2);
+				for (int k = 1; k <= 4; k++) {
+					float hk = texture(height_tex, uv + light * texel * float(k) * 1.4).r;
+					cast = max(cast, step(hs.r + float(k) * 0.012, hk));
+				}
+			}
 		} else {
 			shade = clamp(0.62 - e * 0.5, 0.0, 1.0);
 		}
@@ -99,9 +110,13 @@ void fragment() {
 		float canopy_a = nz(wpos / 26.0).a;
 		float canopy_b = g_quality > 0.5 ? nz(wpos / 63.0 + 0.37).g : 0.5;
 		float blobs = smoothstep(0.38, 0.72, canopy_a * 0.62 + canopy_b * 0.46);
+		float blobs_l = smoothstep(0.38, 0.72, nz((wpos + light * 7.0) / 26.0).a * 0.62 + canopy_b * 0.46);
+		float rim = clamp(blobs - blobs_l, -1.0, 1.0);
 		float forest_amt = hs.g * smoothstep(sand_w + 0.015, sand_w + 0.09, e) * (1.0 - smoothstep(0.30, 0.42, e));
 		vec3 fcol = forest_color(biome);
-		vec3 trees = mix(fcol * 0.72, fcol * 1.28, blobs);
+		vec3 trees = mix(fcol * 0.7, fcol * 1.45, blobs);
+		trees += vec3(0.16, 0.2, 0.05) * max(rim, 0.0) * 1.2;
+		trees *= 1.0 - 0.35 * max(-rim, 0.0);
 		vec3 ground = mix(grass * (0.88 + 0.24 * canopy_b), trees, clamp(forest_amt * 1.5, 0.0, 1.0));
 
 		// Rock on the heights.
@@ -111,7 +126,9 @@ void fragment() {
 		vec3 rock = mix(vec3(0.46, 0.43, 0.4), vec3(0.64, 0.62, 0.6), smoothstep(0.25, 0.46, e));
 		float chunks = smoothstep(0.36, 0.7, nz(wpos / 26.0).a * 0.55 + nz(wpos / 58.0).g * 0.5);
 		float cracks = smoothstep(0.82, 0.98, nz(wpos / 64.0).b);
-		rock = mix(rock * 0.55, rock * 1.15, chunks);
+		float strata = 0.5 + 0.5 * sin((wpos.y + n_mid.r * 160.0) / 7.0);
+		rock = mix(rock * 0.55, rock * 1.15, chunks) * (0.85 + 0.25 * strata);
+		rock = mix(rock, rock * vec3(1.15, 0.95, 0.8), smoothstep(0.4, 0.8, n_big.g));
 		rock = mix(rock, vec3(0.12, 0.1, 0.1), cracks * 0.8);
 		shade = mix(shade, clamp(shade * 1.5 - 0.2, 0.0, 1.0), rock_w);
 		ground = mix(ground, rock, rock_w);
@@ -125,6 +142,9 @@ void fragment() {
 		vec3 sand = mix(wet_sand, dry_sand, smoothstep(swash * 0.4, swash + 0.016, e));
 		col = mix(sand, ground, smoothstep(sand_w, sand_w + 0.02, e));
 		col *= 0.66 + shade * 0.68;
+		col *= 1.0 - ao - cast * 0.24;
+		col = mix(col, col * vec3(0.85, 0.92, 1.08), cast * 0.5);
+		col *= 1.12;
 
 		// Soft dark rim where land meets surf, for depth.
 		col *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.02, e));
@@ -140,6 +160,19 @@ void fragment() {
 		col = mix(col, c_abyss, smoothstep(0.30, 0.40, depth));
 		float shallow_m = 1.0 - smoothstep(0.0, 0.14, depth);
 
+		// Island shadows fall across the water.
+		if (g_quality > 0.5) {
+			vec2 lw = normalize(vec2(-0.55, -0.83));
+			float shw = 0.0;
+			for (int k = 1; k <= 3; k++) {
+				float hk = texture(height_tex, uv + lw * texel * float(k) * 2.2).r;
+				shw += step(0.512, hk) * (1.0 - float(k) * 0.24);
+			}
+			col *= 1.0 - clamp(shw, 0.0, 1.0) * 0.32;
+		}
+		// Ripples in the seabed sand.
+		float seabed = smoothstep(0.35, 0.65, nz(wpos / 58.0 + vec2(t * 0.002, 0.0)).g);
+		col = mix(col, col * vec3(1.12, 1.1, 0.95) + vec3(0.03, 0.05, 0.02), seabed * shallow_m * shallow_m * 0.5);
 		// Sunlit sand under the shallows.
 		col = mix(col, vec3(0.80, 0.88, 0.70), (1.0 - smoothstep(0.0, 0.045, depth)) * 0.38);
 		// Reef and seagrass patches: darker teal-green blotches in the lagoons.
@@ -206,7 +239,8 @@ void fragment() {
 	col *= 1.0 - 0.24 * sh_cloud * g_clouds;
 	col *= mix(vec3(1.0), vec3(1.07, 0.97, 0.84), g_warm);
 	col *= 1.0 - 0.22 * g_storm - 0.07 * g_rain;
-	col = mix(vec3(luma(col)), col, g_sat);
+	col = mix(vec3(luma(col)), col, g_sat * 1.08);
+	col = mix(col, col * col * (3.0 - 2.0 * col), 0.3);
 
 	// ------------------------------------------------------------ fog of war
 	vec2 dd = wpos - g_ship.xy;
