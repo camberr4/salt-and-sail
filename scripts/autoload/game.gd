@@ -34,6 +34,7 @@ var stats := {
 }
 
 var title_font: Font
+var logo_font: Font
 var body_font: Font
 var body_font_bold: Font
 var ui_theme: Theme
@@ -78,6 +79,9 @@ func _notification(what: int) -> void:
 		get_tree().quit()
 	elif what == NOTIFICATION_APPLICATION_PAUSED:
 		save()
+		AudioServer.set_bus_mute(0, true)
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		AudioServer.set_bus_mute(0, false)
 
 
 func gset(name: StringName, value: Variant) -> void:
@@ -178,6 +182,7 @@ func _setup_input() -> void:
 
 func _setup_fonts() -> void:
 	title_font = load("res://assets/fonts/PirataOne-Regular.ttf")
+	logo_font = load("res://assets/fonts/PlayfairDisplaySC-Bold.ttf")
 	body_font = load("res://assets/fonts/Almendra-Regular.ttf")
 	body_font_bold = load("res://assets/fonts/Almendra-Bold.ttf")
 	ui_theme = _build_theme()

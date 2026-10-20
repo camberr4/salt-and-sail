@@ -38,6 +38,7 @@ var shake := 0.0
 var stats_pois_found := 0
 var stats_pois_visited := 0
 
+var trail := PackedVector2Array()
 var _task := -1
 var _pending: WorldGen
 var _seed := 0
@@ -133,6 +134,7 @@ func _finish_world() -> void:
 	ambient.gen = gen
 	ambient.fx = fx
 	gold = 0
+	trail.clear()
 	elapsed = 0.0
 	stats_pois_found = 0
 	stats_pois_visited = 0
@@ -141,7 +143,8 @@ func _finish_world() -> void:
 	cam.limit_right = int(WorldGen.WORLD_W)
 	cam.limit_bottom = int(WorldGen.WORLD_H)
 	cam.position = ship.position
-	cam.zoom = Vector2.ONE * 0.9
+	# Voyages open with a slow zoom in from a wide view of the harbour.
+	cam.zoom = Vector2.ONE * (0.85 if title_mode else 0.52)
 
 	if title_mode:
 		world.set_reveal_all(true)
@@ -187,6 +190,10 @@ func _process(delta: float) -> void:
 	ship.night = weather.cur["night"]
 	ship.steer = steer
 	ship.tick(dt)
+	if trail.is_empty() or trail[trail.size() - 1].distance_to(ship.position) > 110.0:
+		trail.append(ship.position)
+		if trail.size() > 600:
+			trail.remove_at(0)
 	_update_whirlpools(dt)
 	_update_edge(dt)
 	_update_vision(dt)
@@ -222,7 +229,7 @@ func _update_vision(dt: float) -> void:
 	if _flare > 0.0:
 		_flare_tick -= dt
 		if _flare_tick <= 0.0:
-			_flare_tick = 0.05
+			_flare_tick = 0.1
 			world.fog.reveal(_flare_pos, _flare, 200.0, 0.0)
 	world.fog.flush()
 	Game.gset("g_ship", Vector4(ship.position.x, ship.position.y, vision, 0))
@@ -445,10 +452,11 @@ func _update_whirlpools(dt: float) -> void:
 		var inward := d / maxf(dist, 1.0)
 		var tangent := Vector2(-inward.y, inward.x)
 		var k := 1.0 - dist / 330.0
-		ship.external += (inward * 0.5 + tangent * 0.9) * 1100.0 * k * k * dt
+		ship.external += (inward * 0.55 + tangent * 0.9) * 1700.0 * k * k * dt
+		ship.speed = maxf(0.0, ship.speed - 150.0 * k * dt)
 		ship.ang_vel += k * 0.8 * dt
 		shake = maxf(shake, k * 0.35)
-		if dist < 60.0 and _whirl_cd <= 0.0:
+		if dist < 120.0 and _whirl_cd <= 0.0:
 			_whirl_cd = 4.0
 			ship.external = -inward * 520.0
 			shake = 1.0

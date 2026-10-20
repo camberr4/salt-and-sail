@@ -11,6 +11,7 @@ var _hover := 0.0
 var _press := 0.0
 var _t := 0.0
 var _radius := 36.0
+var glass := true
 
 
 func _init(p_kind: String = "pause", p_radius: float = 36.0, p_label: String = "") -> void:
@@ -46,8 +47,13 @@ func _draw() -> void:
 	var c := size * 0.5
 	var r := _radius * (1.0 - 0.06 * _press)
 	draw_circle(c + Vector2(0, 4), r + 2.0, Color(0, 0, 0, 0.3))
-	draw_circle(c, r, Color("5a3a1e"))
-	draw_circle(c, r - 3.0, Color("e8b64a"))
-	draw_circle(c, r - 7.0, Color("f1e2bd").lerp(Color("d9c08a"), _press))
-	draw_arc(c, r - 7.0, PI * 1.1, PI * 1.9, 16, Color(1, 1, 1, 0.5), 2.0, true)
-	UiIcons.draw(self, kind, c + Vector2(0, 1.0 * _press), r * 0.52, UiIcons.INK, _t)
+	if glass:
+		draw_circle(c, r, Color(0.03, 0.07, 0.13, 0.88).lerp(Color(0.1, 0.16, 0.25, 0.95), _press))
+		draw_arc(c, r - 1.5, 0.0, TAU, 40, Color(0.78, 0.8, 0.82, 0.55), 3.0, true)
+		draw_arc(c, r - 1.5, PI * 1.1, PI * 1.8, 16, Color(1, 1, 1, 0.5), 3.0, true)
+		UiIcons.draw(self, kind, c + Vector2(0, 1.0 * _press), r * 0.5, Color("f1e8d4"), _t)
+	else:
+		draw_circle(c, r, Color("5a3a1e"))
+		draw_circle(c, r - 3.0, Color("e8b64a"))
+		draw_circle(c, r - 7.0, Color("f1e2bd").lerp(Color("d9c08a"), _press))
+		UiIcons.draw(self, kind, c + Vector2(0, 1.0 * _press), r * 0.52, UiIcons.INK, _t)

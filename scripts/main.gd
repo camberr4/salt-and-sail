@@ -307,7 +307,7 @@ func _notification(what: int) -> void:
 
 func _process(_dt: float) -> void:
 	if state == S.VOYAGE:
-		sea.steer = joystick.get_vector()
+		sea.steer = Dev.get_vec("steer") if Dev.has("steer") else joystick.get_vector()
 	else:
 		sea.steer = Vector2.ZERO
 	_dev_hooks()
@@ -379,6 +379,9 @@ func _dev_hooks() -> void:
 			_perf_t0 = Time.get_ticks_usec()
 		elif _frames == 260:
 			print("avg frame ms: ", snappedf((Time.get_ticks_usec() - _perf_t0) / 200000.0, 0.1), " quality=", Game.settings["quality"])
+	if Dev.has("watch") and _frames % 15 == 0 and state == S.VOYAGE:
+		var wp: Vector2 = Dev.get_vec("watch")
+		print("f=", _frames, " dist=", snappedf(sea.ship.position.distance_to(wp), 1.0), " speed=", snappedf(sea.ship.speed, 1.0), " ext=", snappedf(sea.ship.external.length(), 1.0), " shake=", snappedf(sea.shake, 0.01))
 	if Dev.has("dbg") and _frames == 40:
 		print("vp ", get_viewport().get_visible_rect().size, " ui_root ", hud.get_parent().size, " hud ", hud.size, " title ", title.size, " joystick ", joystick.size)
 	if Dev.has("shot"):

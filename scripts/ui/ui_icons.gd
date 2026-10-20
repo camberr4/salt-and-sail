@@ -23,6 +23,10 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, r: float, ink: Color 
 			SafeDraw.poly(ci, n, Color("b23a2b"))
 			SafeDraw.poly(ci, s, ink)
 			ci.draw_circle(c, r * 0.1, BRASS)
+		"compass_diamond":
+			SafeDraw.poly(ci, PackedVector2Array([c + Vector2(0, -r * 0.95), c + Vector2(r * 0.42, 0), c + Vector2(0, r * 0.95), c + Vector2(-r * 0.42, 0)]), Color("e0d3b4"))
+			SafeDraw.poly(ci, PackedVector2Array([c + Vector2(0, -r * 0.95), c + Vector2(r * 0.42, 0), c + Vector2(0, 0), c + Vector2(-r * 0.42, 0)]), Color("c4472f"))
+			ci.draw_polyline(PackedVector2Array([c + Vector2(0, -r * 0.95), c + Vector2(r * 0.42, 0), c + Vector2(0, r * 0.95), c + Vector2(-r * 0.42, 0), c + Vector2(0, -r * 0.95)]), ink, 2.0, true)
 		"scroll":
 			var body := Rect2(c + Vector2(-r * 0.7, -r * 0.52), Vector2(r * 1.4, r * 1.04))
 			ci.draw_rect(body, Color("f1e2bd"))
@@ -35,6 +39,29 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, r: float, ink: Color 
 		"pause":
 			ci.draw_rect(Rect2(c + Vector2(-r * 0.42, -r * 0.5), Vector2(r * 0.28, r)), ink)
 			ci.draw_rect(Rect2(c + Vector2(r * 0.14, -r * 0.5), Vector2(r * 0.28, r)), ink)
+		"binoculars":
+			for s in [-1.0, 1.0]:
+				ci.draw_circle(c + Vector2(s * r * 0.42, r * 0.12), r * 0.4, ink)
+				ci.draw_circle(c + Vector2(s * r * 0.42, r * 0.12), r * 0.24, Color(ink, 0.35))
+				ci.draw_rect(Rect2(c + Vector2(s * r * 0.42 - r * 0.2, -r * 0.62), Vector2(r * 0.4, r * 0.4)), ink)
+			ci.draw_rect(Rect2(c + Vector2(-r * 0.14, -r * 0.05), Vector2(r * 0.28, r * 0.2)), ink)
+		"menu":
+			for i in 3:
+				ci.draw_line(c + Vector2(-r * 0.5, (i - 1) * r * 0.36), c + Vector2(r * 0.5, (i - 1) * r * 0.36), ink, maxf(2.0, r * 0.18))
+		"wheel":
+			ci.draw_arc(c, r * 0.62, 0.0, TAU, 32, ink, maxf(2.0, r * 0.16), true)
+			for i in 8:
+				var a := TAU * i / 8.0
+				ci.draw_line(c + Vector2.from_angle(a) * r * 0.2, c + Vector2.from_angle(a) * r * 0.98, ink, maxf(2.0, r * 0.15))
+				ci.draw_circle(c + Vector2.from_angle(a) * r * 0.98, r * 0.1, ink)
+			ci.draw_circle(c, r * 0.2, ink)
+		"x":
+			ci.draw_line(c + Vector2(-r * 0.6, -r * 0.6), c + Vector2(r * 0.6, r * 0.6), ink, maxf(3.0, r * 0.22))
+			ci.draw_line(c + Vector2(-r * 0.6, r * 0.6), c + Vector2(r * 0.6, -r * 0.6), ink, maxf(3.0, r * 0.22))
+		"quit":
+			ci.draw_rect(Rect2(c + Vector2(-r * 0.6, -r * 0.7), Vector2(r * 0.7, r * 1.4)), ink, false, maxf(2.0, r * 0.16))
+			ci.draw_line(c + Vector2(-r * 0.1, 0), c + Vector2(r * 0.8, 0), ink, maxf(2.0, r * 0.16))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(r * 0.95, 0), c + Vector2(r * 0.5, -r * 0.35), c + Vector2(r * 0.5, r * 0.35)]), ink)
 		"gear":
 			for i in 8:
 				var a := TAU * i / 8.0

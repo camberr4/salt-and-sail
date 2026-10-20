@@ -107,6 +107,15 @@ func draw_marks(ci: CanvasItem) -> void:
 			var rp := lp + jitter
 			ci.draw_arc(rp, r + 8.0, 0.0, TAU, 20, Color(0.45, 0.28, 0.14, 0.7), 2.0, true)
 			UiIcons.draw(ci, "unknown", rp, r, Color(0.45, 0.28, 0.14), _t)
+	# Dotted route the ship has sailed.
+	var tr := sea.trail
+	for i in range(1, tr.size()):
+		var a := world_to_local(tr[i - 1])
+		var b := world_to_local(tr[i])
+		var mid := a.lerp(b, 0.5)
+		ci.draw_line(a.lerp(b, 0.15), a.lerp(b, 0.65), Color(0.35, 0.18, 0.1, 0.8), 2.5 if not minimap else 2.0, true)
+	if not minimap:
+		_draw_rose(ci, Vector2(size.x - 110.0, 120.0), 70.0)
 	# The ship.
 	var sp := world_to_local(sea.ship.position)
 	var pulse := 0.5 + 0.5 * sin(_t * 3.0)
@@ -116,6 +125,19 @@ func draw_marks(ci: CanvasItem) -> void:
 	ci.draw_colored_polygon(PackedVector2Array([Vector2(rr * 1.15, 0), Vector2(-rr * 0.8, rr * 0.7), Vector2(-rr * 0.35, 0), Vector2(-rr * 0.8, -rr * 0.7)]), Color("b23a2b"))
 	ci.draw_polyline(PackedVector2Array([Vector2(rr * 1.15, 0), Vector2(-rr * 0.8, rr * 0.7), Vector2(-rr * 0.35, 0), Vector2(-rr * 0.8, -rr * 0.7), Vector2(rr * 1.15, 0)]), Color("2b1d12"), 2.0, true)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_rose(ci: CanvasItem, c: Vector2, r: float) -> void:
+	var ink := Color(0.3, 0.18, 0.1, 0.9)
+	ci.draw_arc(c, r * 0.72, 0.0, TAU, 40, ink, 2.0, true)
+	ci.draw_arc(c, r * 0.5, 0.0, TAU, 32, Color(ink, 0.5), 1.5, true)
+	for i in 8:
+		var a := -PI * 0.5 + TAU * i / 8.0
+		var len := r if i % 2 == 0 else r * 0.62
+		var d := Vector2.from_angle(a)
+		var n := d.rotated(PI * 0.5) * r * 0.11
+		SafeDraw.poly(ci, PackedVector2Array([c + d * len, c + n, c, c - n]), ink if i % 2 == 0 else Color(ink, 0.6))
+	ci.draw_string(Game.body_font_bold, c + Vector2(-9, -r - 6), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 26, ink)
 
 
 func _draw_grid_labels(ci: CanvasItem, s: float) -> void:

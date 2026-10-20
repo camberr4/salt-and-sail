@@ -50,7 +50,15 @@ static func body(text: String, size: int = 34, color: Color = Color("3a2515")) -
 	return l
 
 
-static func button(text: String, primary: bool = false, min_w: float = 420.0) -> Button:
+class BtnIcon extends Control:
+	var kind := ""
+	var ink := Color.WHITE
+
+	func _draw() -> void:
+		UiIcons.draw(self, kind, size * 0.5, minf(size.x, size.y) * 0.5, ink)
+
+
+static func button(text: String, primary: bool = false, min_w: float = 420.0, icon: String = "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(min_w, 104 if primary else 88)
@@ -69,6 +77,18 @@ static func button(text: String, primary: bool = false, min_w: float = 420.0) ->
 		b.add_theme_stylebox_override("pressed", _btn(Color("4a2f17"), Color("2a180a"), true))
 		b.add_theme_font_size_override("font_size", 40)
 	b.pressed.connect(func(): Sfx.play("click", -3.0); Game.haptic(12, 0.3))
+	if icon != "":
+		var ic := BtnIcon.new()
+		ic.kind = icon
+		ic.ink = Color("2b1d12") if primary else Color("f1e2bd")
+		ic.anchor_top = 0.5
+		ic.anchor_bottom = 0.5
+		ic.offset_left = 34
+		ic.offset_right = 86
+		ic.offset_top = -26
+		ic.offset_bottom = 26
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(ic)
 	return b
 
 

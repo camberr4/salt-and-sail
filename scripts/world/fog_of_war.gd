@@ -40,11 +40,18 @@ func reveal(pos: Vector2, radius: float, feather: float = 90.0, min_move: float 
 	var y0 := maxi(0, int(cy - rc - 1.0))
 	var y1 := mini(H - 1, int(cy + rc + 1.0))
 	var changed := false
+	var inv_f := 255.0 / fc
+	var edge := rc + 0.01
 	for y in range(y0, y1 + 1):
 		var row := y * W
+		var dy := y + 0.5 - cy
+		var dy2 := dy * dy
 		for x in range(x0, x1 + 1):
-			var d := Vector2(x + 0.5 - cx, y + 0.5 - cy).length()
-			var v := int(clampf((rc - d) / fc, 0.0, 1.0) * 255.0)
+			var dx := x + 0.5 - cx
+			var d := sqrt(dx * dx + dy2)
+			if d > edge:
+				continue
+			var v := int(minf((rc - d) * inv_f, 255.0))
 			var old := data[row + x]
 			if v > old:
 				if old < 128 and v >= 128 and x > 5 and x < W - 6 and y > 5 and y < H - 6:

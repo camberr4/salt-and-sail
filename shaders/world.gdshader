@@ -83,10 +83,12 @@ void fragment() {
 		// ------------------------------------------------------------ land
 		float e = h - 0.5;
 		float shade = 0.5;
+		float slope = 0.0;
 		if (g_quality > 0.5) {
 			float hx = texture(height_tex, uv + vec2(texel.x, 0.0)).r - texture(height_tex, uv - vec2(texel.x, 0.0)).r;
 			float hy = texture(height_tex, uv + vec2(0.0, texel.y)).r - texture(height_tex, uv - vec2(0.0, texel.y)).r;
 			shade = clamp(0.5 - (hx + hy) * 2.6, 0.0, 1.0);
+			slope = length(vec2(hx, hy));
 		} else {
 			shade = clamp(0.62 - e * 0.5, 0.0, 1.0);
 		}
@@ -104,6 +106,8 @@ void fragment() {
 
 		// Rock on the heights.
 		float rock_w = smoothstep(0.34, 0.44, e + (n_fine.r - 0.5) * 0.1 + (n_mid.g - 0.5) * 0.06);
+		// Steep ground becomes cliff.
+		rock_w = max(rock_w, smoothstep(0.11, 0.2, slope + (n_fine.a - 0.5) * 0.03) * smoothstep(0.06, 0.12, e) * 0.85);
 		vec3 rock = mix(vec3(0.46, 0.43, 0.4), vec3(0.64, 0.62, 0.6), smoothstep(0.25, 0.46, e));
 		float chunks = smoothstep(0.36, 0.7, nz(wpos / 26.0).a * 0.55 + nz(wpos / 58.0).g * 0.5);
 		float cracks = smoothstep(0.82, 0.98, nz(wpos / 64.0).b);
@@ -129,7 +133,7 @@ void fragment() {
 		float depth = 0.5 - h;
 		vec3 c_shallow = vec3(0.32, 0.82, 0.78);
 		vec3 c_mid = vec3(0.12, 0.58, 0.77);
-		vec3 c_deep = vec3(0.045, 0.30, 0.58);
+		vec3 c_deep = vec3(0.035, 0.26, 0.55);
 		vec3 c_abyss = vec3(0.03, 0.18, 0.44);
 		col = mix(c_shallow, c_mid, smoothstep(0.0, 0.11, depth));
 		col = mix(col, c_deep, smoothstep(0.09, 0.28, depth));
@@ -138,8 +142,10 @@ void fragment() {
 
 		// Sunlit sand under the shallows.
 		col = mix(col, vec3(0.80, 0.88, 0.70), (1.0 - smoothstep(0.0, 0.045, depth)) * 0.38);
-		// Dark seagrass patches.
-		col *= 1.0 - 0.2 * smoothstep(0.52, 0.76, n_big.g + n_mid.b * 0.15) * shallow_m;
+		// Reef and seagrass patches: darker teal-green blotches in the lagoons.
+		float reef = smoothstep(0.5, 0.72, n_big.g * 0.65 + n_mid.b * 0.25 + n_fine.a * 0.2) * shallow_m;
+		col = mix(col, vec3(0.04, 0.38, 0.34), reef * 0.7);
+		col *= 1.0 - 0.1 * smoothstep(0.55, 0.8, n_mid.g) * shallow_m;
 
 		// Swell.
 		float flow = t * (0.008 + 0.018 * ws);

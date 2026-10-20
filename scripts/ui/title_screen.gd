@@ -5,6 +5,7 @@ signal set_sail
 signal open_settings
 signal quit_game
 
+var art_bg: TextureRect
 var _title: Label
 var _sub: Label
 var _buttons: VBoxContainer
@@ -44,6 +45,17 @@ func _ready() -> void:
 		tr.offset_bottom = 0
 		add_child(tr)
 
+	# Painted key art, if supplied: assets/art/title_bg.png replaces the live sea.
+	if ResourceLoader.exists("res://assets/art/title_bg.png"):
+		art_bg = TextureRect.new()
+		art_bg.texture = load("res://assets/art/title_bg.png")
+		art_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		art_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(art_bg)
+		move_child(art_bg, 0)
+
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 10)
@@ -59,11 +71,11 @@ func _ready() -> void:
 	_title = Label.new()
 	_title.text = "Salt & Sail"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.add_theme_font_override("font", Game.title_font)
-	_title.add_theme_font_size_override("font_size", 250)
-	_title.add_theme_color_override("font_color", Color("f7e9c3"))
+	_title.add_theme_font_override("font", Game.logo_font)
+	_title.add_theme_font_size_override("font_size", 150)
+	_title.add_theme_color_override("font_color", Color("fbf3dc"))
 	_title.add_theme_color_override("font_outline_color", Color("1a0f08"))
-	_title.add_theme_constant_override("outline_size", 22)
+	_title.add_theme_constant_override("outline_size", 10)
 	_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
 	_title.add_theme_constant_override("shadow_offset_y", 10)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -93,14 +105,14 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(_buttons)
 	box.add_child(center)
-	var play := UiKit.button("Set Sail", true, 620.0)
+	var play := UiKit.button("Set Sail", true, 620.0, "wheel")
 	play.pressed.connect(func(): set_sail.emit())
 	_buttons.add_child(play)
-	var settings := UiKit.button("Settings", false, 620.0)
+	var settings := UiKit.button("Settings", false, 620.0, "gear")
 	settings.pressed.connect(func(): open_settings.emit())
 	_buttons.add_child(settings)
 	if not OS.has_feature("mobile") and not OS.has_feature("web"):
-		var quit := UiKit.button("Quit", false, 620.0)
+		var quit := UiKit.button("Quit", false, 620.0, "quit")
 		quit.pressed.connect(func(): quit_game.emit())
 		_buttons.add_child(quit)
 

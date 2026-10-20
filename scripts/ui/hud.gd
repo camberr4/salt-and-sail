@@ -8,6 +8,7 @@ signal chart_pressed
 
 var sea: Sea
 var minimap: ChartView
+var minimap_hit: Button
 var pause_btn: IconButton
 var chart_btn: IconButton
 var fps_label: Label
@@ -23,6 +24,7 @@ var _weather_state := 0
 var _weather_pop := 0.0
 var _margin := Vector4(30, 24, 30, 24)
 var _sb_chip: StyleBoxFlat
+var _sb_dark: StyleBoxFlat
 var _sb_card: StyleBoxFlat
 var _hint_timer := 0.0
 var _card_bottom := 0.0
@@ -36,13 +38,29 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sb_chip = _make_box(18, 0.93)
 	_sb_card = _make_box(26, 0.97)
+	_sb_dark = StyleBoxFlat.new()
+	_sb_dark.bg_color = Color(0.03, 0.07, 0.13, 0.84)
+	_sb_dark.border_color = Color(0.7, 0.72, 0.75, 0.45)
+	_sb_dark.set_border_width_all(2)
+	_sb_dark.set_corner_radius_all(22)
+	_sb_dark.shadow_color = Color(0, 0, 0, 0.35)
+	_sb_dark.shadow_size = 6
+	_sb_dark.shadow_offset = Vector2(0, 3)
 
 	pause_btn = IconButton.new("pause", 54.0)
 	add_child(pause_btn)
 	pause_btn.pressed.connect(func(): pause_pressed.emit())
-	chart_btn = IconButton.new("scroll", 54.0)
+	chart_btn = IconButton.new("binoculars", 54.0)
 	add_child(chart_btn)
 	chart_btn.pressed.connect(func(): chart_pressed.emit())
+
+	minimap_hit = Button.new()
+	minimap_hit.flat = true
+	minimap_hit.focus_mode = Control.FOCUS_NONE
+	for st in ["normal", "hover", "pressed", "focus"]:
+		minimap_hit.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	add_child(minimap_hit)
+	minimap_hit.pressed.connect(func(): chart_pressed.emit())
 
 	minimap = ChartView.new()
 	minimap.minimap = true
@@ -91,6 +109,8 @@ func _layout() -> void:
 	pause_btn.position = Vector2(right - pause_btn.size.x, _margin.y)
 	chart_btn.position = Vector2(pause_btn.position.x - chart_btn.size.x - 14.0, _margin.y)
 	minimap.position = Vector2(right - MM_SIZE - 6.0, _margin.y + pause_btn.size.y + 26.0)
+	minimap_hit.position = minimap.position
+	minimap_hit.size = minimap.size
 	fps_label.position = Vector2(_margin.x, size.y - _margin.w - 34.0)
 
 
@@ -115,7 +135,7 @@ func bind(p_sea: Sea) -> void:
 
 
 func blockers() -> Array[Control]:
-	return [pause_btn, chart_btn]
+	return [pause_btn, chart_btn, minimap_hit]
 
 
 func set_shown(on: bool) -> void:
@@ -215,60 +235,68 @@ func _draw() -> void:
 	var font := Game.body_font_bold
 	var title_font := Game.title_font
 	var m := _margin
-	# Gold chip.
+	# Gold chip: dark glass with a big coin.
 	var gp := 1.0 + 0.12 * sin(minf(_gold_pop, 1.0) * PI)
-	var gr := Rect2(m.x, m.y, 310.0, 84.0)
-	draw_style_box(_sb_chip, gr)
-	UiIcons.draw(self, "coin", gr.position + Vector2(46, 42), 28.0 * gp)
-	draw_string(font, gr.position + Vector2(92, 58), str(int(round(_gold_shown))), HORIZONTAL_ALIGNMENT_LEFT, -1, int(48 * gp), UiIcons.INK)
-	# Chart progress chip.
-	var cr := Rect2(m.x, m.y + 98.0, 310.0, 96.0)
+	var gr := Rect2(m.x, m.y, 300.0, 84.0)
+	draw_style_box(_sb_dark, gr)
+	UiIcons.draw(self, "coin", gr.position + Vector2(46, 42), 31.0 * gp)
+	draw_string(font, gr.position + Vector2(100, 58), str(int(round(_gold_shown))), HORIZONTAL_ALIGNMENT_LEFT, -1, int(48 * gp), Color("f4ecd8"))
+	# Chart progress chip: parchment.
+	var cr := Rect2(m.x, m.y + 98.0, 300.0, 92.0)
 	draw_style_box(_sb_chip, cr)
-	UiIcons.draw(self, "compass", cr.position + Vector2(46, 48), 28.0)
-	draw_string(font, cr.position + Vector2(90, 40), "Charted", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0.35, 0.22, 0.12))
-	draw_string(font, cr.position + Vector2(220, 40), "%d%%" % int(round(_chart_shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 34, UiIcons.INK)
-	var bar := Rect2(cr.position + Vector2(90, 56), Vector2(194, 14))
-	draw_rect(bar, Color(0.35, 0.22, 0.12, 0.35))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(_chart_shown / 100.0, 0.0, 1.0), bar.size.y)), Color("2a7f62"))
-	draw_rect(bar, Color("5a3a1e"), false, 2.5)
+	UiIcons.draw(self, "compass_diamond", cr.position + Vector2(46, 46), 28.0)
+	draw_string(font, cr.position + Vector2(92, 42), "Charted", HORIZONTAL_ALIGNMENT_LEFT, -1, 31, UiIcons.INK)
+	draw_string(font, cr.position + Vector2(212, 42), "%d%%" % int(round(_chart_shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 31, UiIcons.INK)
+	var bar := Rect2(cr.position + Vector2(92, 60), Vector2(190, 9))
+	draw_rect(bar, Color(0.35, 0.22, 0.12, 0.3))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(_chart_shown / 100.0, 0.0, 1.0), bar.size.y)), Color("c0892f"))
 	# Places found.
 	var ft := "Found %d" % sea.stats_pois_found
-	draw_string(font, Vector2(m.x + 8.0 + 2, m.y + 244.0 + 2), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0, 0, 0, 0.5))
-	draw_string(font, Vector2(m.x + 8.0, m.y + 244.0), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(1, 1, 1, 0.95))
+	draw_string(font, Vector2(m.x + 8.0 + 2, m.y + 240.0 + 2), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0, 0, 0, 0.5))
+	draw_string(font, Vector2(m.x + 8.0, m.y + 240.0), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(1, 1, 1, 0.95))
 
-	# Minimap bezel.
+	# Minimap: thin brass ring, compass letters, menu knob.
 	var mc := minimap.position + minimap.size * 0.5
-	draw_circle(mc + Vector2(0, 4), MM_SIZE * 0.5 + 8.0, Color(0, 0, 0, 0.3))
-	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("5a3a1e"), 12.0, true)
-	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("e8b64a"), 5.0, true)
+	var mr := MM_SIZE * 0.5
+	draw_circle(mc + Vector2(0, 4), mr + 8.0, Color(0, 0, 0, 0.3))
+	draw_arc(mc, mr + 3.0, 0.0, TAU, 72, Color("2a2018"), 9.0, true)
+	draw_arc(mc, mr + 3.0, 0.0, TAU, 72, Color("d9b45a"), 4.0, true)
 	var wa: float = sea.weather.wind.angle()
-	# North marker on the bezel.
-	draw_colored_polygon(PackedVector2Array([mc + Vector2(0, -MM_SIZE * 0.5 - 16.0), mc + Vector2(-8, -MM_SIZE * 0.5 - 2.0), mc + Vector2(8, -MM_SIZE * 0.5 - 2.0)]), Color("b23a2b"))
+	for ld in [["N", Vector2(0, -1)], ["E", Vector2(1, 0)], ["S", Vector2(0, 1)], ["W", Vector2(-1, 0)]]:
+		var lp: Vector2 = mc + (ld[1] as Vector2) * (mr + 26.0)
+		draw_string(font, lp + Vector2(-10, 10) + Vector2(2, 2), ld[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(0, 0, 0, 0.6))
+		draw_string(font, lp + Vector2(-10, 10), ld[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("f4ecd8"))
+	var kb := mc + Vector2.from_angle(PI * 0.25) * (mr + 4.0)
+	draw_circle(kb, 24.0, Color(0.03, 0.07, 0.13, 0.92))
+	draw_arc(kb, 23.0, 0.0, TAU, 24, Color("d9b45a"), 3.0, true)
+	UiIcons.draw(self, "menu", kb, 14.0, Color("f4ecd8"))
 
-	# Weather badge, bottom right.
-	var br := Vector2(size.x - m.z - 66.0, size.y - m.w - 66.0)
+	# Wind and weather, stacked bottom right with labels underneath.
+	var icons := ["sun", "fog", "rain", "storm", "moon"]
+	var wname: String = Weather.NAMES[_weather_state]
+	var bcx := size.x - m.z - 66.0
+	var br := Vector2(bcx, size.y - m.w - 96.0)
 	var pop := 1.0 + 0.2 * sin(minf(_weather_pop, 1.0) * PI)
 	draw_circle(br + Vector2(0, 4), 64.0, Color(0, 0, 0, 0.3))
-	draw_circle(br, 62.0, Color("5a3a1e"))
-	var bg := [Color("5db4e8"), Color("8e9ca6"), Color("5b7185"), Color("3a4658"), Color("16254a")]
-	draw_circle(br, 57.0, bg[_weather_state])
-	draw_arc(br, 57.0, 0.0, TAU, 40, Color("e8b64a"), 4.0, true)
-	var icons := ["sun", "fog", "rain", "storm", "moon"]
+	var bgc := [Color("2b7fc0"), Color("52606c"), Color("34506a"), Color("27324a"), Color("141d44")]
+	draw_circle(br, 60.0, Color(0.03, 0.07, 0.13, 0.92))
+	draw_circle(br, 54.0, bgc[_weather_state])
+	draw_arc(br, 58.0, 0.0, TAU, 40, Color(0.85, 0.87, 0.9, 0.6), 3.0, true)
 	UiIcons.draw(self, icons[_weather_state], br, 38.0 * pop, UiIcons.INK, _t)
-	var wname: String = Weather.NAMES[_weather_state]
-	var ww := font.get_string_size(wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36).x
-	draw_string(font, br + Vector2(-80.0 - ww + 2, 12 + 2), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(0, 0, 0, 0.55))
-	draw_string(font, br + Vector2(-80.0 - ww, 12), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color.WHITE)
-	# Wind dial.
-	var wc := br + Vector2(0, -134.0)
-	draw_circle(wc, 40.0, Color(0, 0.05, 0.1, 0.55))
-	draw_arc(wc, 40.0, 0.0, TAU, 32, Color("e8b64a"), 3.5, true)
+	var ww := font.get_string_size(wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
+	draw_string(font, Vector2(bcx - ww * 0.5 + 2, br.y + 100 + 2), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color(0, 0, 0, 0.6))
+	draw_string(font, Vector2(bcx - ww * 0.5, br.y + 100), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color.WHITE)
+	var wc := br + Vector2(0, -150.0)
+	draw_circle(wc + Vector2(0, 4), 52.0, Color(0, 0, 0, 0.3))
+	draw_circle(wc, 52.0, Color(0.03, 0.07, 0.13, 0.9))
+	draw_arc(wc, 50.0, 0.0, TAU, 40, Color(0.85, 0.87, 0.9, 0.6), 3.0, true)
 	var ws := clampf(sea.weather.wind.length(), 0.0, 1.2)
 	var wdir := Vector2.from_angle(wa)
-	var tip := wc + wdir * (13.0 + 19.0 * ws)
-	draw_line(wc - wdir * 16.0, tip, Color(0.9, 0.97, 1.0), 4.0, true)
-	draw_colored_polygon(PackedVector2Array([tip + wdir * 9.0, tip + wdir.rotated(2.4) * 10.0, tip + wdir.rotated(-2.4) * 10.0]), Color(0.9, 0.97, 1.0))
-	draw_string(font, wc + Vector2(-26, 70), "Wind", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(1, 1, 1, 0.9))
+	var tip := wc + wdir * (16.0 + 16.0 * ws)
+	draw_line(wc - wdir * 22.0, tip, Color("f4ecd8"), 5.0, true)
+	draw_colored_polygon(PackedVector2Array([tip + wdir * 14.0, tip + wdir.rotated(2.3) * 15.0, tip + wdir.rotated(-2.3) * 15.0]), Color("f4ecd8"))
+	draw_string(font, Vector2(bcx - 34 + 2, wc.y + 80 + 2), "Wind", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0, 0, 0, 0.6))
+	draw_string(font, Vector2(bcx - 34, wc.y + 80), "Wind", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color.WHITE)
 
 	_draw_banners(font, title_font)
 	_draw_card(font, title_font)
