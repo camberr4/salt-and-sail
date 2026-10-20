@@ -34,6 +34,11 @@ var _rng := RandomNumberGenerator.new()
 var _coarse := PackedByteArray()
 var _fine := PackedByteArray()
 var _used_names := {}
+var _base := PackedFloat32Array()
+
+## kind -> sprite size in world px. Set before generate(): islands hosting these
+## points of interest are replaced by a flat painted islet (see Art / PoiArt).
+var stamp_sizes := {}
 
 
 func generate(p_seed: int) -> void:
@@ -43,6 +48,7 @@ func generate(p_seed: int) -> void:
 	_place_islands()
 	_raster_islands()
 	_place_pois()
+	_stamp_pois()
 	_build_image()
 
 
@@ -134,6 +140,7 @@ func _make_noise() -> void:
 		heights[i] = 0.17 + float(bdata[i]) * (0.07 / 255.0)
 		forest[i] = 0.0
 		biome[i] = 0.0
+	_base = heights.duplicate()
 
 
 # ------------------------------------------------------------------ islands
@@ -296,6 +303,7 @@ func _place_pois() -> void:
 		"kind": "village",
 		"home": true,
 		"name": "Port Brine",
+		"island": home,
 		"art": shore - normal * 44.0,
 		"pos": shore + normal * 70.0,
 		"normal": normal,
@@ -328,6 +336,63 @@ func _place_pois() -> void:
 			"kind": "bottle", "name": "Message in a Bottle", "art": ahead, "pos": ahead,
 			"normal": Vector2.RIGHT, "radius": 90.0, "seed": _rng.randi(),
 		})
+
+
+## Replaces the island under each painted-sprite point of interest with a tiny
+## flat collision core inside a shallow lagoon; the sprite supplies the looks.
+func _stamp_pois() -> void:
+	if stamp_sizes.is_empty():
+		return
+	for d in pois:
+		var kind: String = d["kind"]
+		if not stamp_sizes.has(kind) or not d.has("island"):
+			continue
+		var size: float = stamp_sizes[kind]
+		if d.get("home", false):
+			size *= 1.2
+		var isl: Dictionary = d["island"]
+		var c: Vector2 = isl["c"]
+		var rmax: float = maxf(isl["rx"], isl["ry"])
+		var foot := size * 0.62 / CELL
+		var reach := maxf(rmax * 2.2 + 4.0, foot + 6.0)
+		var rc := size * 0.2 / CELL
+		var lagoon := maxf(rc + 10.0, foot)
+		var x0 := maxi(0, int(c.x - reach))
+		var x1 := mini(GRID_W - 1, int(c.x + reach))
+		var y0 := maxi(0, int(c.y - reach))
+		var y1 := mini(GRID_H - 1, int(c.y + reach))
+		for iy in range(y0, y1 + 1):
+			for ix in range(x0, x1 + 1):
+				var i := iy * GRID_W + ix
+				var dist := Vector2(ix + 0.5, iy + 0.5).distance_to(c)
+				if dist > reach:
+					continue
+				var h := _base[i]
+				if dist < rc:
+					h = SEA + 0.016 + 0.012 * (1.0 - dist / rc)
+				elif dist < lagoon:
+					h = maxf(h, SEA - 0.03 - (dist - rc) / (lagoon - rc) * 0.16)
+				heights[i] = h
+				forest[i] = 0.0
+				biome[i] = 0.0
+		var centre := c * CELL
+		var normal: Vector2 = d["normal"]
+		if kind == "village":
+			# The painting has its pier at the bottom, so the pier faces south and
+			# the picture is never rotated.
+			normal = Vector2.DOWN
+			d["normal"] = normal
+		d["art"] = centre
+		d["stamped"] = true
+		d["sprite_size"] = size
+		if kind == "village":
+			d["pos"] = centre + normal * size * 0.47
+		else:
+			d["pos"] = centre + normal * size * 0.40
+		d["radius"] = 170.0 if kind != "village" else 150.0
+		if d.get("home", false):
+			start_pos = (d["pos"] as Vector2) + normal * 520.0
+			start_heading = normal.angle()
 
 
 func _append_poi(d: Dictionary) -> void:

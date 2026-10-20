@@ -101,8 +101,18 @@ func begin_world(p_seed: int, p_title: bool) -> void:
 	title_mode = p_title
 	_seed = p_seed
 	var g := WorldGen.new()
+	g.stamp_sizes = _stamp_map()
 	_pending = g
 	_task = WorkerThreadPool.add_task(func(): g.generate(p_seed), false, "worldgen")
+
+
+## Island-bound points of interest with a painted sprite become flat stamps.
+func _stamp_map() -> Dictionary:
+	var out := {}
+	for kind in ["village", "lighthouse", "treasure", "skull"]:
+		if Art.has("poi/" + PoiArt.SPRITE_FILE[kind]):
+			out[kind] = PoiArt.SPRITE_SIZE[kind]
+	return out
 
 
 func _finish_world() -> void:
@@ -301,6 +311,7 @@ func _update_camera(dt: float) -> void:
 	scale = sc
 	position = view * 0.5 - vc * sc + jitter
 	Game.gset("g_cam", Vector4(vc.x, vc.y, cam_zoom, SeaScene3D.SIN_P))
+	scene3d.update_decals(dt, elapsed)
 	scene3d.update(dt, ship.position, ship.heading, spd, ship.wind.rotated(-ship.heading), ship.heel, vc - jitter / sc, cam_zoom, view, weather.cur, weather.cur["night"])
 
 
@@ -375,6 +386,7 @@ func _on_scraped(strength: float, point: Vector2) -> void:
 
 
 func _on_poi_discovered(p: Poi) -> void:
+	scene3d.add_poi_decal(p, world)
 	if title_mode:
 		return
 	stats_pois_found += 1

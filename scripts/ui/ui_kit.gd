@@ -34,8 +34,8 @@ static func painted(rel: String, margin: float, content: Vector4 = Vector4(0, 0,
 	s.content_margin_right = content.z if content.z > 0 else margin * 0.5
 	s.content_margin_top = content.y if content.y > 0 else margin * 0.4
 	s.content_margin_bottom = content.w if content.w > 0 else margin * 0.45
-	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
-	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
 	return s
 
 

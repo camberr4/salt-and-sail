@@ -75,7 +75,7 @@ static func build(p: Poi, rng: RandomNumberGenerator) -> Dictionary:
 
 
 const SPRITE_FILE := {"village": "village", "lighthouse": "lighthouse", "treasure": "treasure", "skull": "skull_rock", "wreck": "wreck", "whirlpool": "whirlpool", "bottle": "bottle", "wisps": "wisps"}
-const SPRITE_SIZE := {"village": 560.0, "lighthouse": 420.0, "treasure": 460.0, "skull": 360.0, "wreck": 400.0, "whirlpool": 700.0, "bottle": 110.0, "wisps": 320.0}
+const SPRITE_SIZE := {"village": 900.0, "lighthouse": 520.0, "treasure": 460.0, "skull": 360.0, "wreck": 400.0, "whirlpool": 700.0, "bottle": 110.0, "wisps": 320.0}
 
 
 ## Painted sprite from assets/art/poi, if supplied. Returns true when drawn.
@@ -84,6 +84,9 @@ static func _draw_sprite(p: Poi, sc: float) -> bool:
 	if tex == null:
 		return false
 	var s: float = SPRITE_SIZE.get(p.kind, 400.0)
+	var ts := tex.get_size()
+	var sw := s * ts.x / maxf(ts.x, ts.y)
+	var sh := s * ts.y / maxf(ts.x, ts.y)
 	var rot := 0.0
 	var a := 1.0
 	match p.kind:
@@ -96,15 +99,12 @@ static func _draw_sprite(p: Poi, sc: float) -> bool:
 		"bottle":
 			rot = 0.5 + sin(p.t * 1.1) * 0.2
 			p.draw_set_transform(Vector2(0, sin(p.t * 1.7) * 3.0), rot, Vector2(sc, sc))
-			p.draw_texture_rect(tex, Rect2(-s * 0.5, -s * 0.5, s, s), false)
 			p.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			return true
 	if a <= 0.01:
 		return true
-	p.draw_set_transform(Vector2.ZERO, rot, Vector2(sc, sc))
-	var home: bool = p.data.get("home", false)
-	var k := 1.2 if home else 1.0
-	p.draw_texture_rect(tex, Rect2(-s * 0.5 * k, -s * 0.5 * k, s * k, s * k), false, Color(1, 1, 1, a))
+	# The picture itself is a 3D decal (SeaScene3D) so the ship sorts correctly
+	# against it; only lights and effects are drawn here.
 	p.draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
 	if p.kind == "lighthouse":
 		_glow(p, Vector2.ZERO, 70.0, Color(1.0, 0.9, 0.55, 0.9), 0.15 + 0.45 * p.night)

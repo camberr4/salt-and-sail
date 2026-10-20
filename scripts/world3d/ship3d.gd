@@ -353,7 +353,8 @@ func _art_quad(tex: Texture2D, size: Vector2, mirror_v: bool = false) -> MeshIns
 	mi.mesh = st.commit()
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.4
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.roughness = 0.85
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -365,26 +366,29 @@ func _apply_art() -> void:
 	var th := Art.tex("ship/hull")
 	if th != null:
 		var aspect := float(th.get_height()) / maxf(float(th.get_width()), 1.0)
-		var width := 2.0 * B * 1.5
+		var width := 2.9
 		art_hull = _art_quad(th, Vector2(width * aspect, width))
 		art_hull.position = Vector3(0, DECK + 0.05, 0)
 		add_child(art_hull)
 		hull.visible = false
 	var tm := Art.tex("ship/sail_main")
 	if tm != null:
-		art_main = _art_quad(tm, Vector2(3.9, 3.0))
-		art_main.position = Vector3(-1.95, 3.2, 0)
+		var asp := float(tm.get_height()) / maxf(float(tm.get_width()), 1.0)
+		art_main = _art_quad(tm, Vector2(4.4, 4.4 / asp))
+		art_main.position = Vector3(-2.2, 2.6, 4.4 / asp * 0.18)
 		main_pivot.add_child(art_main)
 		main_mesh.visible = false
 	var tf := Art.tex("ship/sail_fore")
 	if tf != null:
-		art_fore = _art_quad(tf, Vector2(2.7, 2.2))
-		art_fore.position = Vector3(-1.35, 2.7, 0)
+		var asp2 := float(tf.get_height()) / maxf(float(tf.get_width()), 1.0)
+		art_fore = _art_quad(tf, Vector2(3.0, 3.0 / asp2))
+		art_fore.position = Vector3(-1.5, 2.3, 3.0 / asp2 * 0.18)
 		fore_pivot.add_child(art_fore)
 		fore_mesh.visible = false
 	var tj := Art.tex("ship/sail_jib")
 	if tj != null:
-		art_jib = _art_quad(tj, Vector2(3.4, 1.4))
-		art_jib.position = Vector3(L * 1.0, DECK + 2.6, 0)
+		var asp3 := float(tj.get_height()) / maxf(float(tj.get_width()), 1.0)
+		art_jib = _art_quad(tj, Vector2(3.4, 3.4 / asp3))
+		art_jib.position = Vector3(L * 0.82, DECK + 1.3, 3.4 / asp3 * 0.25)
 		sails_root.add_child(art_jib)
 		jib_node.visible = false

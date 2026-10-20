@@ -20,6 +20,9 @@ var env: Environment
 
 var _gen: WorldGen
 var _ready_done := false
+var _decals := {}
+var _decal_mat := {}
+var _decal_mesh_cache := {}
 
 
 func _ready() -> void:
@@ -78,6 +81,9 @@ func _apply_quality() -> void:
 
 func setup(gen: WorldGen, world: SeaWorld) -> void:
 	_gen = gen
+	for mi in _decals.values():
+		mi.queue_free()
+	_decals.clear()
 	terrain.clear()
 	foliage.clear()
 	terrain.build(gen, world)
@@ -113,7 +119,7 @@ func update(dt: float, ship_px: Vector2, heading: float, speed01: float, wind_lo
 	water.follow(target)
 
 	ship.visible = true
-	ship.scale = Vector3.ONE * 1.35
+	ship.scale = Vector3.ONE * 1.6
 	ship.position = Vector3(sc.x, ship.position.y, sc.y)
 	ship.rotation.y = -heading
 	ship.heel = heel
@@ -130,3 +136,80 @@ func update(dt: float, ship_px: Vector2, heading: float, speed01: float, wind_lo
 	sun.light_color = Color(1.0, 0.95, 0.85).lerp(Color(0.7, 0.8, 1.0), night).lerp(Color(0.8, 0.85, 0.95), storm)
 	env.ambient_light_energy = 0.55 + 0.1 * fog - 0.12 * night
 	env.ambient_light_color = Color(0.62, 0.74, 0.9).lerp(Color(0.4, 0.5, 0.8), night)
+
+
+# ------------------------------------------------------------------ painted POIs
+
+const DECAL_Y := 0.75
+
+
+## Lays a painted sprite flat on the sea at the point of interest. Returns false
+## when no sprite exists for that kind (the 2D code-drawn art is used instead).
+func add_poi_decal(p: Poi, world: SeaWorld) -> bool:
+	if _decals.has(p):
+		return true
+	var file: String = PoiArt.SPRITE_FILE.get(p.kind, p.kind)
+	var tex := Art.tex("poi/" + file)
+	if tex == null:
+		return false
+	var ts := tex.get_size()
+	var size: float = p.data.get("sprite_size", PoiArt.SPRITE_SIZE.get(p.kind, 400.0))
+	if p.data.get("home", false) and not p.data.has("sprite_size"):
+		size *= 1.2
+	var hx := size * ts.x / maxf(ts.x, ts.y) / WorldGen.CELL * 0.5
+	var hz := size * ts.y / maxf(ts.x, ts.y) / WorldGen.CELL * 0.5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var corners := [
+		[Vector3(-hx, 0, -hz), Vector2(0, 0)], [Vector3(hx, 0, -hz), Vector2(1, 0)],
+		[Vector3(-hx, 0, hz), Vector2(0, 1)], [Vector3(hx, 0, hz), Vector2(1, 1)],
+	]
+	for tri in [[0, 2, 1], [1, 2, 3]]:
+		for i in tri:
+			st.set_normal(Vector3.UP)
+			st.set_uv(corners[i][1])
+			st.add_vertex(corners[i][0])
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/3d/decal.gdshader")
+	var t := Art.tiled("poi/" + file)
+	m.set_shader_parameter("decal_tex", t if t != null else tex)
+	m.set_shader_parameter("height_tex", world.height_tex)
+	m.set_shader_parameter("explored_tex", world.fog.texture)
+	m.set_shader_parameter("noise_tex", load("res://assets/textures/noise_atlas.png"))
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var c := p.position / WorldGen.CELL
+	mi.position = Vector3(c.x, DECAL_Y, c.y)
+	add_child(mi)
+	_decals[p] = mi
+	return true
+
+
+func has_decal(p: Poi) -> bool:
+	return _decals.has(p)
+
+
+func update_decals(dt: float, t: float) -> void:
+	for p in _decals:
+		var mi: MeshInstance3D = _decals[p]
+		mi.visible = p.discovered
+		var rot := 0.0
+		var y := DECAL_Y
+		var a := 1.0
+		match p.kind:
+			"village":
+				rot = 0.0 if p.data.get("stamped", false) else p.normal_angle - PI * 0.5
+			"whirlpool":
+				rot = p.t * 0.7
+			"bottle":
+				rot = 0.5 + sin(p.t * 1.1) * 0.2
+				y += sin(p.t * 1.7) * 0.12
+			"wisps":
+				a = clampf(p.night * 1.4 - 0.2, 0.0, 1.0)
+				mi.visible = mi.visible and a > 0.01
+		mi.rotation.y = -rot
+		mi.position.y = y
+		var m := mi.material_override as ShaderMaterial
+		m.set_shader_parameter("alpha_mul", minf(1.0, p.appear * 3.0) * a)

@@ -112,13 +112,19 @@ func _scatter_chunk(gen: WorldGen, cx: int, cz: int) -> void:
 			var basis := Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * scale)
 			var t := Transform3D(basis, Vector3(px, y - 0.05, pz))
 			if grad > 0.55 or e > 0.62:
-				if _rng.randf() < 0.08:
+				if _cards_ok and _card_mats.has("rock_a") and _rng.randf() < 0.06:
+					var nm := "rock_spire" if (e > 0.3 and _card_mats.has("rock_spire") and _rng.randf() < 0.4) else ("rock_b" if _card_mats.has("rock_b") and _rng.randf() < 0.4 else "rock_a")
+					_add_card(card_t, card_c, nm, px, y, pz, _rng.randf_range(0.7, 1.5), Color.WHITE)
+				elif _rng.randf() < 0.08 and not _cards_ok:
 					var rs := _rng.randf_range(0.8, 2.2)
 					rock_t.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(rs, rs * _rng.randf_range(0.7, 1.2), rs)), Vector3(px, y - 0.1, pz)))
 					rock_c.append(Color.from_hsv(0.08, 0.12, _rng.randf_range(0.55, 0.85)))
 				continue
 			if _cards_ok and e < 0.1 and e > 0.04 and biome < 0.6 and _rng.randf() < 0.06 and not _cards_missing.has("palm"):
 				_add_card(card_t, card_c, "palm_" + ["a", "b"][_rng.randi() % 2], px, y, pz, _rng.randf_range(0.9, 1.4), Color.WHITE)
+				continue
+			if _cards_ok and _card_mats.has("bush_a") and e < 0.2 and forest > 0.2 and _rng.randf() < 0.025:
+				_add_card(card_t, card_c, "bush_a", px, y, pz, _rng.randf_range(0.7, 1.2), Color.WHITE)
 				continue
 			if forest * _rng.randf_range(0.6, 1.4) < 0.28:
 				if _rng.randf() < 0.02 and e < 0.12:
@@ -257,6 +263,7 @@ func _cone(st: SurfaceTool, base: Vector3, r: float, h: float, c0: Color, c1: Co
 var _cards_ok := false
 var _cards_missing := {}
 var _card_mats := {}
+var _card_aspect := {}
 var _card_mesh: ArrayMesh
 
 
@@ -275,6 +282,7 @@ func _setup_cards(world: SeaWorld, noise_tex: Texture2D) -> void:
 		m.set_shader_parameter("explored_tex", world.fog.texture)
 		m.set_shader_parameter("noise_tex", noise_tex)
 		_card_mats[name] = m
+		_card_aspect[name] = float(t.get_width()) / maxf(float(t.get_height()), 1.0)
 	_cards_ok = not _card_mats.is_empty()
 	if not _card_mats.has("tree_broadleaf_a"):
 		_cards_missing["broadleaf"] = true
@@ -300,14 +308,23 @@ func _setup_cards(world: SeaWorld, noise_tex: Texture2D) -> void:
 func _add_card(ts: Dictionary, cs: Dictionary, name: String, px: float, y: float, pz: float, scale: float, tint: Color) -> void:
 	if not _card_mats.has(name):
 		return
-	var size := 3.2 * scale if name.begins_with("tree") else (3.0 * scale if name.begins_with("palm") else 1.6 * scale)
-	if name == "tree_pine_a":
-		size = 4.2 * scale
+	var size := 3.2 * scale
+	if name.begins_with("palm"):
+		size = 3.8 * scale
+	elif name == "tree_pine_a":
+		size = 4.6 * scale
+	elif name.begins_with("bush"):
+		size = 1.5 * scale
+	elif name == "rock_spire":
+		size = 3.0 * scale
+	elif name.begins_with("rock"):
+		size = 1.7 * scale
+	var asp: float = _card_aspect.get(name, 1.0)
 	if not ts.has(name):
 		ts[name] = []
 		cs[name] = []
 	var flip := -1.0 if _rng.randf() < 0.5 else 1.0
-	(ts[name] as Array).append(Transform3D(Basis.IDENTITY.scaled(Vector3(size * flip, size, size)), Vector3(px, y - 0.05, pz)))
+	(ts[name] as Array).append(Transform3D(Basis.IDENTITY.scaled(Vector3(size * asp * flip, size, size)), Vector3(px, y - 0.05, pz)))
 	(cs[name] as Array).append(tint)
 
 
