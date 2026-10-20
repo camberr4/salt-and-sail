@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_disabled, blend_mix, depth_draw_never, diffuse_burley, specular_schlick_ggx;
+render_mode cull_disabled, blend_mix, depth_draw_never, shadows_disabled, diffuse_burley, specular_schlick_ggx;
 #include "res://shaders/3d/common.gdshaderinc"
 
 varying vec2 v_w;

@@ -10,6 +10,10 @@ Every session starts by reading this file. Every milestone ends by updating it a
 - Code: **Milestone 1 built** (sailing sea, joystick, fog of war, points of interest, weather). See "Milestone 1" below.
 - Assets: nothing supplied yet. Everything is generated or code-drawn placeholder; fonts are OFL (Pirata One, Almendra).
 
+## Visual rework (3D sea), latest
+The sea is now rendered in **3D** behind the existing 2D overlay: tilted orthographic camera, lit terrain with relief and strata, instanced 3D trees and rocks (streamed in chunks), wave-displaced water with depth colours, caustics, surf, whitecaps and sun glitter, a procedural 3D sloop whose sails billow with the wind and whose boom swings, a ribbon foam wake, shadows at High quality. Gameplay, HUD, weather, fog of war, points of interest and audio are unchanged. The old 2D shaders remain for the chart and as fallback.
+It is as close to the reference screenshots as code alone gets; the remaining gap is painted art. **docs/ART-PIPELINE.md lists every asset with exact specs and cohesive prompts**; drop the files into assets/art/ and I wire them in. Real-device performance of the 3D scene is still unmeasured, so check it first.
+
 ## Milestone 1: what is in
 - Portrait (1080x1920 base), Godot Compatibility renderer, floating one-thumb joystick (also keyboard, mouse, gamepad on desktop).
 - Procedural archipelago per voyage (10x10 portrait screens, about 150 islands, deterministic per seed, generated on a worker thread behind a "Charting the seas" screen). The whole sea is one shader quad: water with swell, caustics and glints, animated surf, beaches, forests, rock, cloud shadows.
