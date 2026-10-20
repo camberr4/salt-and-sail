@@ -11,6 +11,13 @@ const DECK := 0.85
 var wood_mat: ShaderMaterial
 var sail_mat: ShaderMaterial
 var hull: MeshInstance3D
+var masts_mi: MeshInstance3D
+var art_hull: MeshInstance3D
+var art_main: MeshInstance3D
+var art_fore: MeshInstance3D
+var art_jib: MeshInstance3D
+var main_mesh: MeshInstance3D
+var fore_mesh: MeshInstance3D
 var sails_root: Node3D
 var main_pivot: Node3D
 var fore_pivot: Node3D
@@ -18,6 +25,7 @@ var jib_node: MeshInstance3D
 var flag: MeshInstance3D
 var _t := randf() * 10.0
 var _boom := 0.0
+var sgn_cache := 1.0
 var look := {"sail": Color(0.95, 0.9, 0.78), "hull": Color(0.3, 0.16, 0.08), "trim": Color(0.6, 0.15, 0.1)}
 
 # Written by the owner each frame.
@@ -61,7 +69,12 @@ func _build() -> void:
 	hull.mesh = _hull_mesh()
 	hull.material_override = wood_mat
 	add_child(hull)
+	masts_mi = MeshInstance3D.new()
+	masts_mi.mesh = _mast_mesh()
+	masts_mi.material_override = wood_mat
+	add_child(masts_mi)
 	_build_rig()
+	_apply_art()
 
 
 func _hull_mesh() -> ArrayMesh:
@@ -128,12 +141,17 @@ func _hull_mesh() -> ArrayMesh:
 	_box(st, Vector3(L * 0.2, DECK - 0.1, 0), Vector3(0.6, 0.25, 0.7), Color(0.28, 0.16, 0.08))
 	for bp in [Vector3(-L * 0.22, DECK - 0.1, 0.8), Vector3(-L * 0.22, DECK - 0.1, -0.8), Vector3(-L * 0.12, DECK - 0.1, 0.85)]:
 		_cyl(st, bp, 0.26, 0.26, 0.4, Color(0.45, 0.28, 0.14), 8)
-	# bowsprit
+	st.generate_normals()
+	return st.commit()
+
+
+## Masts, bowsprit and crow's nest. Always 3D, so painted hulls still carry them.
+func _mast_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cyl_dir(st, Vector3(L * 0.8, DECK + 0.1, 0), Vector3(L * 1.32, DECK + 0.5, 0), 0.09, Color(0.28, 0.16, 0.08))
-	# masts
 	for mx in [L * 0.12, L * 0.62]:
 		_cyl(st, Vector3(mx, DECK - 0.2, 0), 0.11, 0.07, 5.2 if mx < L * 0.3 else 4.1, Color(0.3, 0.17, 0.08), 8)
-	# crow's nest
 	_cyl(st, Vector3(L * 0.12, 4.3, 0), 0.34, 0.3, 0.28, Color(0.34, 0.2, 0.1), 8)
 	st.generate_normals()
 	return st.commit()
@@ -147,6 +165,7 @@ func _build_rig() -> void:
 	main_pivot.position = Vector3(L * 0.12, DECK, 0)
 	sails_root.add_child(main_pivot)
 	var mm := MeshInstance3D.new()
+	main_mesh = mm
 	mm.mesh = _sail_mesh([Vector3(0, 0.55, 0), Vector3(-3.5, 0.65, 0), Vector3(-2.6, 4.6, 0), Vector3(0.0, 5.1, 0)], 10, 12)
 	mm.material_override = sail_mat
 	main_pivot.add_child(mm)
@@ -164,6 +183,7 @@ func _build_rig() -> void:
 	fore_pivot.position = Vector3(L * 0.62, DECK, 0)
 	sails_root.add_child(fore_pivot)
 	var fm := MeshInstance3D.new()
+	fore_mesh = fm
 	fm.mesh = _sail_mesh([Vector3(0, 0.5, 0), Vector3(-2.4, 0.6, 0), Vector3(-1.6, 3.5, 0), Vector3(0, 3.9, 0)], 8, 10)
 	fm.material_override = sail_mat
 	fore_pivot.add_child(fm)
@@ -282,6 +302,7 @@ func _process(delta: float) -> void:
 	var drive := clampf(strength * (0.5 + 0.8 * absf(wl.y)) , 0.0, 1.0)
 	var belly := 0.6 + 1.0 * drive + 0.3 * speed01
 	var sgn := signf(_boom) if absf(_boom) > 0.02 else side
+	sgn_cache = sgn
 	sail_mat.set_shader_parameter("billow", -sgn * belly)
 	sail_mat.set_shader_parameter("flutter", 0.05 + 0.12 * clampf(1.0 - drive, 0.0, 1.0))
 	# Roll and pitch with the sea; heel under sail pressure.
@@ -289,6 +310,16 @@ func _process(delta: float) -> void:
 	var pitch := sin(_t * 1.1 + 1.3) * (0.01 + waves * 0.03)
 	hull.rotation.x = roll
 	hull.rotation.z = pitch
+	masts_mi.rotation.x = roll
+	masts_mi.rotation.z = pitch
+	if art_hull != null:
+		art_hull.rotation.x = roll
+		art_hull.rotation.z = pitch
+	var flip := (1.0 if sgn_cache >= 0.0 else -1.0) * (0.85 + 0.3 * drive)
+	if art_main != null:
+		art_main.scale.z = flip
+	if art_fore != null:
+		art_fore.scale.z = flip
 	sails_root.rotation.x = roll
 	sails_root.rotation.z = pitch
 	flag.rotation.x = roll
@@ -298,3 +329,62 @@ func _process(delta: float) -> void:
 	flag.rotation.y = -ang + sin(_t * 9.0) * 0.12
 	flag.position.y = 4.9 + 0.0
 	position.y = sin(_t * 1.3) * (0.03 + waves * 0.1)
+
+
+# ------------------------------------------------------------------ painted art
+
+## A flat painted quad. Image "up" maps to the ship's bow (+X), image "right" to
+## starboard (+Z). `size` is (length along the ship, width across it) in units.
+func _art_quad(tex: Texture2D, size: Vector2, mirror_v: bool = false) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hx := size.x * 0.5
+	var hz := size.y * 0.5
+	var corners := [
+		[Vector3(hx, 0, -hz), Vector2(0, 0)], [Vector3(hx, 0, hz), Vector2(1, 0)],
+		[Vector3(-hx, 0, -hz), Vector2(0, 1)], [Vector3(-hx, 0, hz), Vector2(1, 1)],
+	]
+	for tri in [[0, 2, 1], [1, 2, 3]]:
+		for i in tri:
+			st.set_normal(Vector3.UP)
+			st.set_uv(corners[i][1])
+			st.add_vertex(corners[i][0])
+	mi.mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.roughness = 0.85
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	mi.material_override = m
+	return mi
+
+
+func _apply_art() -> void:
+	var th := Art.tex("ship/hull")
+	if th != null:
+		var aspect := float(th.get_height()) / maxf(float(th.get_width()), 1.0)
+		var width := 2.0 * B * 1.5
+		art_hull = _art_quad(th, Vector2(width * aspect, width))
+		art_hull.position = Vector3(0, DECK + 0.05, 0)
+		add_child(art_hull)
+		hull.visible = false
+	var tm := Art.tex("ship/sail_main")
+	if tm != null:
+		art_main = _art_quad(tm, Vector2(3.9, 3.0))
+		art_main.position = Vector3(-1.95, 3.2, 0)
+		main_pivot.add_child(art_main)
+		main_mesh.visible = false
+	var tf := Art.tex("ship/sail_fore")
+	if tf != null:
+		art_fore = _art_quad(tf, Vector2(2.7, 2.2))
+		art_fore.position = Vector3(-1.35, 2.7, 0)
+		fore_pivot.add_child(art_fore)
+		fore_mesh.visible = false
+	var tj := Art.tex("ship/sail_jib")
+	if tj != null:
+		art_jib = _art_quad(tj, Vector2(3.4, 1.4))
+		art_jib.position = Vector3(L * 1.0, DECK + 2.6, 0)
+		sails_root.add_child(art_jib)
+		jib_node.visible = false

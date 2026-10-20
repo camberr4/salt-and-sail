@@ -2,6 +2,17 @@ shader_type spatial;
 render_mode cull_disabled, blend_mix, depth_draw_never, shadows_disabled, diffuse_burley, specular_schlick_ggx;
 #include "res://shaders/3d/common.gdshaderinc"
 
+uniform sampler2D art_foam : repeat_enable, filter_linear_mipmap;
+uniform sampler2D art_caustics : repeat_enable, filter_linear_mipmap;
+uniform sampler2D art_wavenorm : repeat_enable, filter_linear_mipmap;
+uniform sampler2D art_seabed : repeat_enable, filter_linear_mipmap;
+uniform sampler2D art_reef : repeat_enable, filter_linear_mipmap;
+uniform float has_foam = 0.0;
+uniform float has_caustics = 0.0;
+uniform float has_wavenorm = 0.0;
+uniform float has_seabed = 0.0;
+uniform float has_reef = 0.0;
+
 varying vec2 v_w;
 varying float v_wave;
 varying vec2 v_grad;
@@ -72,6 +83,15 @@ void fragment() {
 	col = mix(col, vec3(0.03, 0.36, 0.32), reef * 0.75);
 	float ripples = smoothstep(0.35, 0.65, nz(wpx / 58.0).g);
 	col = mix(col, col * vec3(1.14, 1.1, 0.95) + vec3(0.03, 0.05, 0.02), ripples * shallow_m * shallow_m * 0.55);
+	if (has_seabed > 0.5) {
+		vec3 sb = texture(art_seabed, wpx / 700.0).rgb;
+		col = mix(col, sb * vec3(0.8, 1.05, 1.0), shallow_m * shallow_m * 0.6);
+	}
+	if (has_reef > 0.5) {
+		vec3 rf = texture(art_reef, wpx / 800.0).rgb;
+		float rmask = smoothstep(0.5, 0.72, n_big.g * 0.65 + n_mid.b * 0.25) * shallow_m;
+		col = mix(col, rf * vec3(0.75, 0.95, 0.95), rmask * 0.85);
+	}
 	col = mix(col, vec3(0.82, 0.9, 0.72), (1.0 - smoothstep(0.0, 0.05, depth)) * 0.4);
 
 	// Caustics.
@@ -79,15 +99,27 @@ void fragment() {
 	vec2 q1 = wpx / 95.0 + vec2(t * 0.020, -t * 0.014);
 	vec2 q2 = wpx / 66.0 + vec2(-t * 0.016, t * 0.011);
 	float cs = smoothstep(0.80, 1.02, nz(q1).b * 0.55 + nz(q2).b * 0.55);
+	if (has_caustics > 0.5) {
+		float c1 = texture(art_caustics, wpx / 520.0 + vec2(t * 0.012, -t * 0.008)).r;
+		float c2 = texture(art_caustics, wpx / 380.0 - vec2(t * 0.01, -t * 0.012)).r;
+		cs = smoothstep(0.35, 0.95, c1 * c2 * 2.2);
+	}
 	col += vec3(0.55, 0.95, 0.9) * cs * shallow_m * 0.3 * sun;
 
 	// Normal: analytic swell plus two scrolling micro-ripple layers.
 	vec3 n_w = normalize(vec3(-v_grad.x, 1.0, -v_grad.y));
-	vec2 r1 = wpx / 70.0 - wd * t * (0.01 + 0.02 * ws);
-	vec2 r2 = wpx / 31.0 + vec2(wd.y, -wd.x) * t * 0.03;
+	vec2 r1 = wpx / 210.0 - wd * t * (0.006 + 0.012 * ws);
+	vec2 r2 = wpx / 95.0 + vec2(wd.y, -wd.x) * t * 0.02;
 	vec2 e1 = vec2(nz(r1 + vec2(0.01, 0.0)).r - nz(r1 - vec2(0.01, 0.0)).r, nz(r1 + vec2(0.0, 0.01)).r - nz(r1 - vec2(0.0, 0.01)).r);
 	vec2 e2 = vec2(nz(r2 + vec2(0.02, 0.0)).g - nz(r2 - vec2(0.02, 0.0)).g, nz(r2 + vec2(0.0, 0.02)).g - nz(r2 - vec2(0.0, 0.02)).g);
-	n_w = normalize(n_w + vec3(e1.x + e2.x * 0.25, 0.0, e1.y + e2.y * 0.25) * (1.4 + g_waves * 2.0));
+	n_w = normalize(n_w + vec3(e1.x + e2.x * 0.35, 0.0, e1.y + e2.y * 0.35) * (0.55 + g_waves * 1.2));
+	if (has_wavenorm > 0.5) {
+		vec2 nu1 = wpx / 420.0 - wd * t * (0.004 + 0.008 * ws);
+		vec2 nu2 = wpx / 260.0 + vec2(wd.y, -wd.x) * t * 0.006;
+		vec3 nm1 = texture(art_wavenorm, nu1).rgb * 2.0 - 1.0;
+		vec3 nm2 = texture(art_wavenorm, nu2).rgb * 2.0 - 1.0;
+		n_w = normalize(n_w + vec3(nm1.x + nm2.x, 0.0, nm1.y + nm2.y) * (0.35 + g_waves * 0.8));
+	}
 	NORMAL = normalize((VIEW_MATRIX * vec4(n_w, 0.0)).xyz);
 
 	// Foam on the shore, with rolling surf lines.
@@ -96,6 +128,10 @@ void fragment() {
 	float edge_w = 0.016 + 0.008 * sin(t * 0.9 + n_big.r * 8.0);
 	float edge = 1.0 - smoothstep(0.0, edge_w, depth);
 	float breakup = smoothstep(0.18, 0.55, nz(wpx / 49.0 + vec2(0.0, t * 0.01)).a + 0.2 * rolling);
+	if (has_foam > 0.5) {
+		float fm = texture(art_foam, wpx / 380.0 + vec2(0.0, t * 0.008)).r;
+		breakup = smoothstep(0.12, 0.6, fm + 0.25 * rolling);
+	}
 	float foam = clamp(max(band * 0.85 * breakup, edge * (0.75 + 0.25 * breakup)), 0.0, 1.0);
 	// Whitecaps on steep crests once the sea gets up.
 	float crest = smoothstep(0.55, 1.0, length(v_grad) * 1.4 + v_wave * 0.8);
@@ -128,19 +164,25 @@ void fragment() {
 	col *= 0.82 + 0.34 * clamp(ndl, 0.0, 1.0) + 0.1 * (1.0 - abs(ndl));
 	vec3 R = reflect(-V, n_w);
 	float sd = max(dot(R, sun_dir), 0.0);
-	float sparkle0 = smoothstep(0.6, 0.95, nz(wpx / 9.0 + vec2(t * 0.1, 0.0)).a);
-	float glint = pow(sd, 140.0) * 1.6 + pow(sd, 24.0) * 0.1 * sparkle0;
-	float sparkle = smoothstep(0.55, 0.9, nz(wpx / 6.0 + vec2(t * 0.3, -t * 0.2)).a);
+	float sparkle0 = smoothstep(0.6, 0.95, nz(wpx / 20.0 + vec2(t * 0.05, 0.0)).a);
+	float glint = pow(sd, 90.0) * 1.1 + pow(sd, 20.0) * 0.08 * sparkle0;
+	float sparkle = smoothstep(0.35, 0.9, nz(wpx / 40.0 + vec2(t * 0.1, -t * 0.06)).g);
 	vec3 sun_col = vec3(1.0, 0.93, 0.78);
 	float fres = pow(1.0 - clamp(dot(n_w, V), 0.0, 1.0), 4.0);
-	col = mix(col, vec3(0.55, 0.75, 0.95), fres * 0.35 * (1.0 - g_night));
+	col = mix(col, vec3(0.55, 0.75, 0.95), fres * 0.3 * (1.0 - g_night));
+	// Long soft swell bands: the broad shading that sells moving water.
+	float bands = nz(wpx / 520.0 - wd * t * 0.01).r * 0.6 + nz(wpx / 240.0 + vec2(wd.y, -wd.x) * t * 0.012).g * 0.4;
+	col *= 0.88 + 0.28 * smoothstep(0.25, 0.75, bands);
+	// Foam lines drifting along the crests of those bands.
+	float crestline = smoothstep(0.015, 0.0, abs(bands - 0.62)) * smoothstep(0.35, 0.8, nz(wpx / 60.0 + wd * t * 0.04).a);
+	col = mix(col, vec3(0.93, 0.98, 1.0), crestline * (0.25 + 0.6 * g_waves) * (1.0 - shallow_m));
 	col += sun_col * (glint * (0.35 + 0.65 * sparkle)) * sun * (1.0 - foam) * fog_state(w, t).x;
 	vec3 fc = fog_of_war(col, w, t);
 	float rev = fog_state(w, t).x;
 	ALBEDO = fc * 0.35;
 	EMISSION = fc * (0.62 + 0.3 * shallow_m);
 	ROUGHNESS = mix(0.3, 0.9, foam);
-	SPECULAR = 0.12 * (1.0 - foam) * rev;
+	SPECULAR = 0.05 * (1.0 - foam) * rev;
 	METALLIC = 0.0;
 	ALPHA = 1.0;
 }

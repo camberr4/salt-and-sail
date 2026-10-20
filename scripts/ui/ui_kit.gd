@@ -3,7 +3,46 @@ extends RefCounted
 ## Builders for the parchment-and-brass menu widgets.
 
 
-static func parchment_box() -> StyleBoxFlat:
+## A 9-slice painted frame when `rel` exists under assets/art/ui, else null.
+static var _scaled := {}
+
+
+## `margin` is in the source image's pixels; `scale` shrinks the whole image
+## first so corners stay proportionate when the frame is displayed small.
+static func painted(rel: String, margin: float, content: Vector4 = Vector4(0, 0, 0, 0), scale: float = 1.0) -> StyleBoxTexture:
+	var t := Art.tex("ui/" + rel)
+	if t == null:
+		return null
+	if scale < 0.99:
+		var key := "%s@%.3f" % [rel, scale]
+		if not _scaled.has(key):
+			var img := t.get_image()
+			if img.is_compressed():
+				img.decompress()
+			img.resize(maxi(8, int(img.get_width() * scale)), maxi(8, int(img.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
+			_scaled[key] = ImageTexture.create_from_image(img)
+		t = _scaled[key]
+		margin *= scale
+		content *= scale
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	s.texture_margin_left = margin
+	s.texture_margin_right = margin
+	s.texture_margin_top = margin
+	s.texture_margin_bottom = margin
+	s.content_margin_left = content.x if content.x > 0 else margin * 0.5
+	s.content_margin_right = content.z if content.z > 0 else margin * 0.5
+	s.content_margin_top = content.y if content.y > 0 else margin * 0.4
+	s.content_margin_bottom = content.w if content.w > 0 else margin * 0.45
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+	return s
+
+
+static func parchment_box() -> StyleBox:
+	var pt := painted("panel_parchment", 150.0, Vector4(130, 110, 130, 120), 0.55)
+	if pt != null:
+		return pt
 	var s := StyleBoxFlat.new()
 	s.bg_color = Color("f1e2bd")
 	s.border_color = Color("5a3a1e")
@@ -92,7 +131,12 @@ static func button(text: String, primary: bool = false, min_w: float = 420.0, ic
 	return b
 
 
-static func _btn(fill: Color, border: Color, pressed: bool = false) -> StyleBoxFlat:
+static func _btn(fill: Color, border: Color, pressed: bool = false) -> StyleBox:
+	var rel := "button_primary" if fill.r > 0.8 else "button_wood"
+	var pt := painted(rel, 70.0, Vector4(70, 30, 70, 36), 0.45)
+	if pt != null:
+		pt.modulate_color = Color(0.78, 0.74, 0.7) if pressed else (Color(1.1, 1.08, 1.05) if fill.r > 0.5 and fill.r < 0.8 else Color.WHITE)
+		return pt
 	var s := StyleBoxFlat.new()
 	s.bg_color = fill
 	s.border_color = border

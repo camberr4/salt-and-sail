@@ -18,6 +18,14 @@ func build(gen: WorldGen, world: SeaWorld) -> void:
 	material.set_shader_parameter("height_tex", world.height_tex)
 	material.set_shader_parameter("explored_tex", world.fog.texture)
 	material.set_shader_parameter("noise_tex", load("res://assets/textures/noise_atlas.png"))
+	var w := Art.white()
+	Art.bind(material, "art_grass", "has_grass", "terrain/grass", w)
+	Art.bind(material, "art_forest", "has_forest", "terrain/forest_floor", w)
+	Art.bind(material, "art_sand", "has_sand", "terrain/sand_dry", w)
+	Art.bind(material, "art_sand_wet", "has_sand_wet", "terrain/sand_wet", w)
+	Art.bind(material, "art_cliff", "has_cliff", "terrain/rock_cliff", w)
+	Art.bind(material, "art_rock", "has_rock", "terrain/rock_top", w)
+	Art.bind(material, "art_earth", "has_earth", "terrain/earth_dry", w)
 
 
 ## Streams terrain chunks around `center` (cell units), `budget` chunks per call.

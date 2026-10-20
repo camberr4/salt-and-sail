@@ -16,7 +16,8 @@ func _ready() -> void:
 	add_child(UiKit.dim_rect(0.7))
 	var frame := PanelContainer.new()
 	var sb := UiKit.parchment_box()
-	sb.set_corner_radius_all(24)
+	if sb is StyleBoxFlat:
+		sb.set_corner_radius_all(24)
 	sb.content_margin_left = 20
 	sb.content_margin_right = 20
 	sb.content_margin_top = 16
@@ -87,9 +88,10 @@ class Legend extends Control:
 
 	func _draw() -> void:
 		var sb := UiKit.parchment_box()
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(14)
-		sb.shadow_size = 6
+		if sb is StyleBoxFlat:
+			sb.set_border_width_all(3)
+			sb.set_corner_radius_all(14)
+			sb.shadow_size = 6
 		draw_style_box(sb, Rect2(Vector2.ZERO, size))
 		var rows := [["ship", "Your Ship"], ["village", "Settlement"], ["unknown", "Rumour"], ["lighthouse", "Lighthouse"], ["treasure", "Treasure"]]
 		for i in rows.size():

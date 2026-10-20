@@ -23,9 +23,9 @@ var _alpha := 1.0
 var _weather_state := 0
 var _weather_pop := 0.0
 var _margin := Vector4(30, 24, 30, 24)
-var _sb_chip: StyleBoxFlat
-var _sb_dark: StyleBoxFlat
-var _sb_card: StyleBoxFlat
+var _sb_chip: StyleBox
+var _sb_dark: StyleBox
+var _sb_card: StyleBox
 var _hint_timer := 0.0
 var _card_bottom := 0.0
 var _hints_done := {}
@@ -36,16 +36,21 @@ const MM_SIZE := 270.0
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_sb_chip = _make_box(18, 0.93)
-	_sb_card = _make_box(26, 0.97)
-	_sb_dark = StyleBoxFlat.new()
-	_sb_dark.bg_color = Color(0.03, 0.07, 0.13, 0.84)
-	_sb_dark.border_color = Color(0.7, 0.72, 0.75, 0.45)
-	_sb_dark.set_border_width_all(2)
-	_sb_dark.set_corner_radius_all(22)
-	_sb_dark.shadow_color = Color(0, 0, 0, 0.35)
-	_sb_dark.shadow_size = 6
-	_sb_dark.shadow_offset = Vector2(0, 3)
+	_sb_chip = UiKit.painted("panel_parchment", 150.0, Vector4(120, 80, 120, 80), 0.22)
+	if _sb_chip == null:
+		_sb_chip = _make_box(18, 0.93)
+	_sb_card = UiKit.parchment_box() if Art.has("ui/panel_parchment") else _make_box(26, 0.97)
+	_sb_dark = UiKit.painted("chip_glass", 60.0, Vector4(60, 36, 60, 36), 0.52)
+	if _sb_dark == null:
+		var d := StyleBoxFlat.new()
+		d.bg_color = Color(0.03, 0.07, 0.13, 0.84)
+		d.border_color = Color(0.7, 0.72, 0.75, 0.45)
+		d.set_border_width_all(2)
+		d.set_corner_radius_all(22)
+		d.shadow_color = Color(0, 0, 0, 0.35)
+		d.shadow_size = 6
+		d.shadow_offset = Vector2(0, 3)
+		_sb_dark = d
 
 	pause_btn = IconButton.new("pause", 54.0)
 	add_child(pause_btn)

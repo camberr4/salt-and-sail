@@ -74,7 +74,50 @@ static func build(p: Poi, rng: RandomNumberGenerator) -> Dictionary:
 	return l
 
 
+const SPRITE_FILE := {"village": "village", "lighthouse": "lighthouse", "treasure": "treasure", "skull": "skull_rock", "wreck": "wreck", "whirlpool": "whirlpool", "bottle": "bottle", "wisps": "wisps"}
+const SPRITE_SIZE := {"village": 560.0, "lighthouse": 420.0, "treasure": 460.0, "skull": 360.0, "wreck": 400.0, "whirlpool": 700.0, "bottle": 110.0, "wisps": 320.0}
+
+
+## Painted sprite from assets/art/poi, if supplied. Returns true when drawn.
+static func _draw_sprite(p: Poi, sc: float) -> bool:
+	var tex := Art.tex("poi/" + SPRITE_FILE.get(p.kind, p.kind))
+	if tex == null:
+		return false
+	var s: float = SPRITE_SIZE.get(p.kind, 400.0)
+	var rot := 0.0
+	var a := 1.0
+	match p.kind:
+		"village":
+			rot = p.normal_angle - PI * 0.5  # the pier points down in the painting
+		"whirlpool":
+			rot = p.t * 0.7
+		"wisps":
+			a = clampf(p.night * 1.4 - 0.2, 0.0, 1.0)
+		"bottle":
+			rot = 0.5 + sin(p.t * 1.1) * 0.2
+			p.draw_set_transform(Vector2(0, sin(p.t * 1.7) * 3.0), rot, Vector2(sc, sc))
+			p.draw_texture_rect(tex, Rect2(-s * 0.5, -s * 0.5, s, s), false)
+			p.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return true
+	if a <= 0.01:
+		return true
+	p.draw_set_transform(Vector2.ZERO, rot, Vector2(sc, sc))
+	var home: bool = p.data.get("home", false)
+	var k := 1.2 if home else 1.0
+	p.draw_texture_rect(tex, Rect2(-s * 0.5 * k, -s * 0.5 * k, s * k, s * k), false, Color(1, 1, 1, a))
+	p.draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
+	if p.kind == "lighthouse":
+		_glow(p, Vector2.ZERO, 70.0, Color(1.0, 0.9, 0.55, 0.9), 0.15 + 0.45 * p.night)
+	elif p.kind == "village" and p.night > 0.05:
+		_glow(p, Vector2.ZERO, 120.0, Color(1.0, 0.75, 0.4, 0.8), p.night * 0.6)
+	p.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
+
+
 static func draw(p: Poi, sc: float) -> void:
+	if _draw_sprite(p, sc):
+		_discovery_ring(p)
+		return
 	p.draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
 	match p.kind:
 		"village":

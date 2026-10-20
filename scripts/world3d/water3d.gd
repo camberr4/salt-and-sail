@@ -17,6 +17,12 @@ func setup(world: SeaWorld) -> void:
 	material.set_shader_parameter("height_tex", world.height_tex)
 	material.set_shader_parameter("explored_tex", world.fog.texture)
 	material.set_shader_parameter("noise_tex", load("res://assets/textures/noise_atlas.png"))
+	var w := Art.white()
+	Art.bind(material, "art_foam", "has_foam", "water/foam", w)
+	Art.bind(material, "art_caustics", "has_caustics", "water/caustics", w)
+	Art.bind(material, "art_wavenorm", "has_wavenorm", "water/wave_normal", w)
+	Art.bind(material, "art_seabed", "has_seabed", "water/seabed_sand", w)
+	Art.bind(material, "art_reef", "has_reef", "water/reef", w)
 	material.render_priority = 0
 	material_override = material
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

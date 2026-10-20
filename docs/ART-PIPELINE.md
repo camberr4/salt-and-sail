@@ -101,7 +101,7 @@ Folder `assets/art/poi/`. These sit on islands and are lit from the upper right.
 
 | file | prompt |
 |---|---|
-| `village.png` | small tropical pirate harbour village seen from above, six timber houses with terracotta and teal roofs, wooden pier extending down into the sea with a moored rowboat, lanterns, fishing nets drying, palm trees |
+| `village.png` | small tropical pirate harbour village seen from above, six timber houses with terracotta and teal roofs, wooden pier extending straight down toward the BOTTOM edge of the image into the sea with a moored rowboat, lanterns, fishing nets drying, palm trees |
 | `lighthouse.png` | white-and-red striped stone lighthouse on a rocky islet seen from above and slightly front, lantern room glowing |
 | `treasure.png` | sandy islet with three palms and a big red X marked in the sand, a half-dug hole with a chest and a spade |
 | `skull_rock.png` | huge rock formation naturally shaped like a skull with dark eye caves and a jaw of teeth, sea foam at its base |
@@ -151,3 +151,25 @@ this file exists the title screen uses it instead of the live sea.
 | `title_bg.png` | already supported |
 
 You can supply them in any order. Each folder works on its own.
+
+
+## 10. Orientation and size conventions the code assumes (read before generating)
+
+These are what the wiring expects. If a file is generated differently, tell me
+and I adjust the code instead of asking you to redo it.
+
+| asset | convention |
+|---|---|
+| `terrain/*`, `water/*` | seamless; one repeat covers about 640 world px (about 27 map units). Mipmaps are generated at load. `wave_normal.png` is a tangent-space normal map (blue-purple). |
+| `props/*` | transparent, drawn as upright camera-facing cards. The **trunk base is the bottom-centre** of the image. Tree cards render about 3.2 map units tall, pines 4.2, palms 3.0, bushes 1.6. |
+| `ship/hull.png` | **bow pointing up**, starboard (right-hand side of the ship) on the right. Aspect ratio is kept; the hull is drawn about 3.75 units wide. |
+| `ship/sail_main.png`, `sail_fore.png` | tall image along the ship's length, **bow end at the top** (the end by the mast), belly **swelling to the right**. The code mirrors it when the wind changes side and scales the belly with wind strength. |
+| `ship/sail_jib.png` | triangle along the bowsprit, bow end at the top. |
+| `poi/*` | square, transparent. `village.png`: the **pier points straight down** (the code rotates it to face the sea). `whirlpool.png` is rotated slowly by the game, so keep it radially symmetric. `wisps.png` fades in at night. |
+| `ui/panel_parchment.png` | 1024x1024, 9-slice. Keep the decorative border within **150 px** of each edge and the centre plain. |
+| `ui/chip_glass.png` | 600x160, border within **60 px** of the edge. |
+| `ui/button_primary.png`, `button_wood.png` | 800x200, border within **70 px** of the edge. |
+| `title_bg.png` | 1080x1920, replaces the live sea on the title screen. |
+
+Painted UI frames are scaled down at load so corners stay proportionate, so
+generate them large (the sizes above) and sharp.
