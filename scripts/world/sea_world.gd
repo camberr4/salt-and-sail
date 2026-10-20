@@ -59,6 +59,7 @@ func _exit_tree() -> void:
 
 func set_reveal_all(on: bool) -> void:
 	world_mat.set_shader_parameter("reveal_all", 1.0 if on else 0.0)
+	Game.gset("g_reveal", 1.0 if on else 0.0)
 	if on:
 		fog.reveal_all()
 

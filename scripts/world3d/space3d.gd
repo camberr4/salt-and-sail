@@ -4,7 +4,7 @@ extends RefCounted
 ## 3D scene (1 unit = 1 height-field cell = 24 px).
 
 const CELL_PX := 24.0
-const HS := 26.0  # height scale: field height above sea level -> units
+const HS := 13.0  # height scale: field height above sea level -> units
 
 
 static func to3(p: Vector2, y: float = 0.0) -> Vector3:

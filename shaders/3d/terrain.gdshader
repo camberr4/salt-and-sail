@@ -51,6 +51,9 @@ void fragment() {
 	vec4 hs = texture(height_tex, uv);
 	float h = v_h;
 	float e = h - 0.5;
+	if (e < -0.006) {
+		discard;
+	}
 	float biome = clamp(hs.b, 0.0, 1.0);
 
 	// Normal from the height field, plus fine bump on rock.
@@ -60,7 +63,7 @@ void fragment() {
 	float hD = field_h(w + vec2(0.0, 0.5));
 	vec3 n_w = normalize(vec3((hL - hR) * HS, 1.0, (hU - hD) * HS));
 	float slope = 1.0 - n_w.y;
-	float rock_amt = smoothstep(0.16, 0.34, slope) + smoothstep(0.30, 0.42, e);
+	float rock_amt = smoothstep(0.22, 0.42, slope) + smoothstep(0.38, 0.5, e);
 	vec2 bump = vec2(nz(wpx / 22.0 + vec2(0.02, 0.0)).a - nz(wpx / 22.0 - vec2(0.02, 0.0)).a, nz(wpx / 22.0 + vec2(0.0, 0.02)).a - nz(wpx / 22.0 - vec2(0.0, 0.02)).a);
 	n_w = normalize(n_w + vec3(bump.x, 0.0, bump.y) * 3.0 * clamp(rock_amt, 0.15, 1.0));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n_w, 0.0)).xyz);
@@ -75,12 +78,12 @@ void fragment() {
 	vec3 ground = mix(grass * (0.85 + 0.3 * canopy_b), mix(fcol * 0.6, fcol * 1.2, blobs), clamp(forest_amt * 1.6, 0.0, 1.0));
 
 	// Cliffs and stone with strata.
-	float strata = 0.5 + 0.5 * sin((h * 260.0) + nz(wpx / 300.0).r * 6.0);
-	float chunks = smoothstep(0.3, 0.7, nz(wpx / 30.0).a * 0.6 + nz(wpx / 71.0).g * 0.5);
+	float strata = 0.5 + 0.5 * sin((h * 120.0) + nz(wpx / 300.0).r * 6.0);
+	float chunks = smoothstep(0.3, 0.7, nz(wpx / 55.0).a * 0.6 + nz(wpx / 130.0).g * 0.5);
 	vec3 rock = mix(vec3(0.34, 0.31, 0.29), vec3(0.62, 0.57, 0.5), strata * 0.6 + chunks * 0.4);
 	rock = mix(rock, rock * vec3(1.2, 0.92, 0.75), smoothstep(0.4, 0.8, nz(wpx / 900.0).g));
-	float cracks = smoothstep(0.82, 0.98, nz(wpx / 64.0).b);
-	rock = mix(rock, vec3(0.1, 0.09, 0.09), cracks * 0.7);
+	float cracks = smoothstep(0.9, 1.0, nz(wpx / 150.0).b);
+	rock = mix(rock, vec3(0.1, 0.09, 0.09), cracks * 0.35);
 	ground = mix(ground, rock, clamp(rock_amt, 0.0, 1.0));
 
 	// Beach.

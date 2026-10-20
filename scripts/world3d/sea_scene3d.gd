@@ -1,0 +1,132 @@
+class_name SeaScene3D
+extends Node3D
+## The 3D half of the sea: lighting, terrain, trees, water, the ship and its
+## wake, seen through a tilted orthographic camera. Orthographic means the
+## ground plane maps to the screen with a plain affine transform, so the 2D
+## overlay (points of interest, particles, gulls) lines up exactly.
+
+const PITCH_DEG := 68.0
+const SIN_P := 0.9272  # sin(68 deg)
+const COS_P := 0.3746
+
+var terrain: Terrain3D
+var foliage: Foliage3D
+var water: Water3D
+var ship: Ship3D
+var wake: Wake3D
+var cam: Camera3D
+var sun: DirectionalLight3D
+var env: Environment
+
+var _gen: WorldGen
+var _ready_done := false
+
+
+func _ready() -> void:
+	env = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.03, 0.09, 0.17)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.62, 0.74, 0.9)
+	env.ambient_light_energy = 0.55
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_white = 1.6
+	var we := WorldEnvironment.new()
+	we.environment = env
+	add_child(we)
+
+	sun = DirectionalLight3D.new()
+	sun.basis = Basis.looking_at(Vector3(-0.35, -0.62, 0.7).normalized())
+	sun.light_color = Color(1.0, 0.95, 0.85)
+	sun.light_energy = 1.25
+	sun.shadow_bias = 0.04
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 130.0
+	add_child(sun)
+
+	cam = Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.keep_aspect = Camera3D.KEEP_WIDTH
+	cam.near = 1.0
+	cam.far = 500.0
+	cam.size = 50.0
+	add_child(cam)
+	cam.make_current()
+
+	terrain = Terrain3D.new()
+	add_child(terrain)
+	foliage = Foliage3D.new()
+	add_child(foliage)
+	water = Water3D.new()
+	add_child(water)
+	ship = Ship3D.new()
+	ship.visible = false
+	add_child(ship)
+	wake = Wake3D.new()
+	add_child(wake)
+	_ready_done = true
+	Game.settings_changed.connect(_apply_quality)
+	_apply_quality()
+
+
+func _apply_quality() -> void:
+	var q := int(Game.settings["quality"])
+	sun.shadow_enabled = q >= 2
+	if foliage != null:
+		foliage.density = [0.55, 0.8, 1.0][q]
+
+
+func setup(gen: WorldGen, world: SeaWorld) -> void:
+	_gen = gen
+	terrain.clear()
+	foliage.clear()
+	terrain.build(gen, world)
+	foliage.build(gen, world, load("res://assets/textures/noise_atlas.png"))
+	water.setup(world)
+	ship.bind_world(world)
+	wake.clear()
+
+
+## Builds everything around `center_px` immediately (used while the loading
+## screen is up so the first frame already has islands and trees).
+func prebuild(center_px: Vector2) -> void:
+	var c := center_px / WorldGen.CELL
+	for i in 6:
+		terrain.update(c, 3, 100)
+	foliage.update(c, 3, 100)
+
+
+func update(dt: float, ship_px: Vector2, heading: float, speed01: float, wind_local: Vector2, heel: float, view_center_px: Vector2, zoom: float, view_px: Vector2, weather_cur: Dictionary, night: float) -> void:
+	if not _ready_done or _gen == null:
+		return
+	var vc := view_center_px / WorldGen.CELL
+	# Orthographic camera: `size` is the world width (units) across the screen.
+	cam.size = view_px.x / zoom / WorldGen.CELL
+	var dist := 160.0
+	var target := Vector3(vc.x, 0.0, vc.y)
+	cam.position = target + Vector3(0.0, SIN_P * dist, COS_P * dist)
+	cam.look_at(target, Vector3.UP)
+
+	var sc := ship_px / WorldGen.CELL
+	terrain.update(vc, 3, 2)
+	foliage.update(vc, 3, 2)
+	water.follow(target)
+
+	ship.visible = true
+	ship.scale = Vector3.ONE * 1.35
+	ship.position = Vector3(sc.x, ship.position.y, sc.y)
+	ship.rotation.y = -heading
+	ship.heel = heel
+	ship.speed01 = speed01
+	ship.wind_local = wind_local
+	ship.waves = float(weather_cur.get("waves", 0.2))
+	wake.update_wake(sc, heading, speed01, dt)
+
+	# Light follows the weather; the 2D atmosphere pass does the heavy grading.
+	var storm: float = weather_cur.get("storm", 0.0)
+	var fog: float = weather_cur.get("fog", 0.0)
+	var rain: float = weather_cur.get("rain", 0.0)
+	sun.light_energy = 1.3 * (1.0 - 0.6 * storm - 0.4 * fog - 0.15 * rain - 0.6 * night)
+	sun.light_color = Color(1.0, 0.95, 0.85).lerp(Color(0.7, 0.8, 1.0), night).lerp(Color(0.8, 0.85, 0.95), storm)
+	env.ambient_light_energy = 0.55 + 0.1 * fog - 0.12 * night
+	env.ambient_light_color = Color(0.62, 0.74, 0.9).lerp(Color(0.4, 0.5, 0.8), night)

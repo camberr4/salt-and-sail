@@ -53,6 +53,7 @@ const GLOBALS := {
 	"g_cam": [RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 1, 1)],
 	"g_ship": [RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 700, 0)],
 	"g_quality": [RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 1.0],
+	"g_reveal": [RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
 }
 
 

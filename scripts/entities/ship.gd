@@ -24,6 +24,7 @@ var control_enabled := true
 var autopilot := false
 var night := 0.0
 var visual: ShipVisual
+var use_visual := false
 
 var _hull_points: Array[Vector2] = []
 var _auto_target := 0.0
@@ -32,8 +33,9 @@ var _scrape_cd := 0.0
 
 
 func _ready() -> void:
-	visual = ShipVisual.new()
-	add_child(visual)
+	if use_visual:
+		visual = ShipVisual.new()
+		add_child(visual)
 	var hl := ShipVisual.HL * 0.86
 	var hb := ShipVisual.HB * 0.8
 	_hull_points = [
@@ -86,10 +88,11 @@ func tick(dt: float) -> void:
 	external = external.lerp(Vector2.ZERO, 1.0 - exp(-2.5 * dt))
 
 	rotation = heading
-	visual.speed01 = speed / MAX_SPEED
-	visual.heel = heel
-	visual.wind_local = wind.rotated(-heading)
-	visual.night = night
+	if visual != null:
+		visual.speed01 = speed / MAX_SPEED
+		visual.heel = heel
+		visual.wind_local = wind.rotated(-heading)
+		visual.night = night
 
 
 func _move(step: Vector2) -> void:

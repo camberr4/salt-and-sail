@@ -37,9 +37,10 @@ vec4 nz(vec2 p) {
 void fragment() {
 	vec2 px = UV * view_px;
 	float t = TIME;
-	vec2 wpos = g_cam.xy + (px - view_px * 0.5) / g_cam.z;
+	vec2 cs = g_cam.z * vec2(1.0, g_cam.w);
+	vec2 wpos = g_cam.xy + (px - view_px * 0.5) / cs;
 	vec2 wd = normalize(g_wind + vec2(0.0001, 0.0));
-	vec2 ship_px = (g_ship.xy - g_cam.xy) * g_cam.z + view_px * 0.5;
+	vec2 ship_px = (g_ship.xy - g_cam.xy) * cs + view_px * 0.5;
 	float vis_px = g_ship.z * g_cam.z;
 
 	vec3 add = vec3(0.0);

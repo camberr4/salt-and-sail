@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+render_mode cull_disabled, blend_mix, depth_draw_never, diffuse_burley, specular_schlick_ggx;
 #include "res://shaders/3d/common.gdshaderinc"
 
 varying vec2 v_w;
@@ -16,13 +16,13 @@ float waves(vec2 p, float t, float amp, out vec2 g) {
 	float y = 0.0;
 	g = vec2(0.0);
 	float k, a, ph;
-	k = 0.55; a = 1.0 * amp; ph = k * dot(d0, p) - sqrt(k * 9.8 * 0.18) * t;
+	k = 0.30; a = 1.0 * amp; ph = k * dot(d0, p) - sqrt(k * 9.8 * 0.18) * t;
 	y += a * sin(ph); g += a * k * cos(ph) * d0;
-	k = 0.9; a = 0.6 * amp; ph = k * dot(d1, p) - sqrt(k * 9.8 * 0.18) * t;
+	k = 0.50; a = 0.55 * amp; ph = k * dot(d1, p) - sqrt(k * 9.8 * 0.18) * t;
 	y += a * sin(ph); g += a * k * cos(ph) * d1;
-	k = 1.5; a = 0.35 * amp; ph = k * dot(d2, p) - sqrt(k * 9.8 * 0.18) * t;
+	k = 0.80; a = 0.28 * amp; ph = k * dot(d2, p) - sqrt(k * 9.8 * 0.18) * t;
 	y += a * sin(ph); g += a * k * cos(ph) * d2;
-	k = 2.4; a = 0.2 * amp; ph = k * dot(d3, p) - sqrt(k * 9.8 * 0.18) * t;
+	k = 1.15; a = 0.14 * amp; ph = k * dot(d3, p) - sqrt(k * 9.8 * 0.18) * t;
 	y += a * sin(ph); g += a * k * cos(ph) * d3;
 	return y;
 }
@@ -30,7 +30,7 @@ float waves(vec2 p, float t, float amp, out vec2 g) {
 float wave_amp(vec2 w) {
 	float h = texture(height_tex, w / GRID).r;
 	float deep = smoothstep(0.0, 0.14, 0.5 - h);
-	return (0.05 + g_waves * 0.5) * mix(0.15, 1.0, deep);
+	return (0.1 + g_waves * 0.7) * mix(0.2, 1.0, deep);
 }
 
 void vertex() {
@@ -87,7 +87,7 @@ void fragment() {
 	vec2 r2 = wpx / 31.0 + vec2(wd.y, -wd.x) * t * 0.03;
 	vec2 e1 = vec2(nz(r1 + vec2(0.01, 0.0)).r - nz(r1 - vec2(0.01, 0.0)).r, nz(r1 + vec2(0.0, 0.01)).r - nz(r1 - vec2(0.0, 0.01)).r);
 	vec2 e2 = vec2(nz(r2 + vec2(0.02, 0.0)).g - nz(r2 - vec2(0.02, 0.0)).g, nz(r2 + vec2(0.0, 0.02)).g - nz(r2 - vec2(0.0, 0.02)).g);
-	n_w = normalize(n_w + vec3(e1.x + e2.x * 0.6, 0.0, e1.y + e2.y * 0.6) * (0.9 + g_waves * 1.6));
+	n_w = normalize(n_w + vec3(e1.x + e2.x * 0.25, 0.0, e1.y + e2.y * 0.25) * (1.4 + g_waves * 2.0));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n_w, 0.0)).xyz);
 
 	// Foam on the shore, with rolling surf lines.
@@ -121,10 +121,26 @@ void fragment() {
 	col *= 1.0 - 0.22 * g_storm - 0.07 * g_rain;
 	col = mix(vec3(luma3(col)), col, g_sat);
 
+	// Sun: diffuse variation from the swell plus analytic glitter.
+	vec3 sun_dir = normalize(vec3(0.35, 0.62, -0.7));
+	vec3 V = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
+	float ndl = dot(n_w, sun_dir);
+	col *= 0.82 + 0.34 * clamp(ndl, 0.0, 1.0) + 0.1 * (1.0 - abs(ndl));
+	vec3 R = reflect(-V, n_w);
+	float sd = max(dot(R, sun_dir), 0.0);
+	float sparkle0 = smoothstep(0.6, 0.95, nz(wpx / 9.0 + vec2(t * 0.1, 0.0)).a);
+	float glint = pow(sd, 140.0) * 1.6 + pow(sd, 24.0) * 0.1 * sparkle0;
+	float sparkle = smoothstep(0.55, 0.9, nz(wpx / 6.0 + vec2(t * 0.3, -t * 0.2)).a);
+	vec3 sun_col = vec3(1.0, 0.93, 0.78);
+	float fres = pow(1.0 - clamp(dot(n_w, V), 0.0, 1.0), 4.0);
+	col = mix(col, vec3(0.55, 0.75, 0.95), fres * 0.35 * (1.0 - g_night));
+	col += sun_col * (glint * (0.35 + 0.65 * sparkle)) * sun * (1.0 - foam) * fog_state(w, t).x;
 	vec3 fc = fog_of_war(col, w, t);
-	ALBEDO = fc * 0.62;
-	EMISSION = fc * (0.5 + 0.35 * shallow_m);
-	ROUGHNESS = mix(0.14, 0.9, foam);
-	SPECULAR = 0.55 * (1.0 - foam);
+	float rev = fog_state(w, t).x;
+	ALBEDO = fc * 0.35;
+	EMISSION = fc * (0.62 + 0.3 * shallow_m);
+	ROUGHNESS = mix(0.3, 0.9, foam);
+	SPECULAR = 0.12 * (1.0 - foam) * rev;
 	METALLIC = 0.0;
+	ALPHA = 1.0;
 }

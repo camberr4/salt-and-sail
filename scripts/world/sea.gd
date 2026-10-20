@@ -16,13 +16,16 @@ const VISION := 900.0
 
 var gen: WorldGen
 var world: SeaWorld
-var wake: Wake
+var scene3d: SeaScene3D
 var poi_root: Node2D
 var ship: Ship
 var fx: Fx
 var fx_add: Fx
 var ambient: Ambient
-var cam: Camera2D
+var cam_pos := Vector2.ZERO
+var cam_zoom := 0.9
+var cam_offset := Vector2.ZERO
+var view_center := Vector2.ZERO
 var weather: Weather
 var atmosphere: Atmosphere
 var pois: Array[Poi] = []
@@ -62,8 +65,8 @@ func _ready() -> void:
 	weather.thunder.connect(func(st): Sfx.play("thunder", -4.0 + st * 2.0, randf_range(0.85, 1.05)))
 	weather.lightning.connect(func(_s): shake = maxf(shake, 0.12))
 
-	wake = Wake.new()
-	add_child(wake)
+	scene3d = SeaScene3D.new()
+	add_child(scene3d)
 	poi_root = Node2D.new()
 	poi_root.z_index = 1
 	add_child(poi_root)
@@ -80,10 +83,6 @@ func _ready() -> void:
 	add_child(fx_add)
 	ambient = Ambient.new()
 	add_child(ambient)
-	cam = Camera2D.new()
-	cam.position_smoothing_enabled = false
-	add_child(cam)
-	cam.make_current()
 	atmosphere = Atmosphere.new()
 	add_child(atmosphere)
 	ship.visible = false
@@ -111,7 +110,8 @@ func _finish_world() -> void:
 	world = SeaWorld.new()
 	add_child(world)
 	move_child(world, 0)
-	world.setup(gen)
+	world.setup(gen, false)
+	scene3d.setup(gen, world)
 
 	for d in gen.pois:
 		var p := Poi.new()
@@ -129,7 +129,7 @@ func _finish_world() -> void:
 		start = Dev.get_vec("at", start)
 		heading = Dev.get_num("heading", heading)
 	ship.place(start, heading)
-	wake.clear()
+	scene3d.wake.clear()
 	ambient.clear()
 	ambient.gen = gen
 	ambient.fx = fx
@@ -138,13 +138,11 @@ func _finish_world() -> void:
 	elapsed = 0.0
 	stats_pois_found = 0
 	stats_pois_visited = 0
-	cam.limit_left = 0
-	cam.limit_top = 0
-	cam.limit_right = int(WorldGen.WORLD_W)
-	cam.limit_bottom = int(WorldGen.WORLD_H)
-	cam.position = ship.position
+	cam_pos = ship.position
+	cam_offset = Vector2.ZERO if title_mode else Vector2(0.0, -230.0)
 	# Voyages open with a slow zoom in from a wide view of the harbour.
-	cam.zoom = Vector2.ONE * (0.85 if title_mode else 0.52)
+	cam_zoom = 1.15 if title_mode else 0.8
+	scene3d.prebuild(ship.position)
 
 	if title_mode:
 		world.set_reveal_all(true)
@@ -199,7 +197,6 @@ func _process(delta: float) -> void:
 	_update_vision(dt)
 	_update_pois(dt)
 	_update_camera(dt)
-	wake.update_wake(ship.position, ship.heading, ship.speed / Ship.MAX_SPEED, weather.cur["waves"], dt)
 	_update_fx(dt)
 	ambient.calm = clampf(1.0 - weather.cur["storm"] - weather.cur["rain"] * 0.4, 0.0, 1.0)
 	ambient.night = weather.cur["night"]
@@ -236,9 +233,9 @@ func _update_vision(dt: float) -> void:
 
 
 func _update_pois(dt: float) -> void:
-	var view := get_viewport().get_visible_rect().size / cam.zoom.x
-	var c := cam.get_screen_center_position()
-	var screen := Rect2(c - view * 0.5, view).grow(420.0)
+	var vsz := get_viewport().get_visible_rect().size
+	var half := vsz / (2.0 * Vector2(cam_zoom, cam_zoom * SeaScene3D.SIN_P))
+	var screen := Rect2(view_center - half, half * 2.0).grow(420.0)
 	var night: float = weather.cur["night"]
 	var sp := ship.position
 	for p in pois:
@@ -267,21 +264,35 @@ func _update_pois(dt: float) -> void:
 func _update_camera(dt: float) -> void:
 	var spd := ship.speed / Ship.MAX_SPEED
 	var storm: float = weather.cur["storm"]
-	var zoom_target := 0.9 - 0.05 * spd - 0.03 * storm
+	var zoom_target := 1.3 - 0.08 * spd - 0.04 * storm
 	if title_mode:
-		zoom_target = 0.85
-	cam.zoom = cam.zoom.lerp(Vector2.ONE * zoom_target, 1.0 - exp(-1.6 * dt))
+		zoom_target = 1.15
+	cam_zoom = lerpf(cam_zoom, zoom_target, 1.0 - exp(-1.6 * dt))
 	var target := ship.position + ship.velocity * 0.5
-	cam.position = cam.position.lerp(target, 1.0 - exp(-3.0 * dt))
-	var rough := shake + storm * 0.12
+	cam_pos = cam_pos.lerp(target, 1.0 - exp(-3.0 * dt))
 	# The ship sits below the middle of the screen so there is room to see
 	# where it is heading (and for banners above it).
 	var framing := Vector2.ZERO if title_mode else Vector2(0.0, -230.0)
-	cam.offset = cam.offset.lerp(framing, 1.0 - exp(-4.0 * dt)) if rough < 0.01 else framing + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * rough * 14.0
+	cam_offset = cam_offset.lerp(framing, 1.0 - exp(-4.0 * dt))
+	var rough := shake + storm * 0.12
 	shake = move_toward(shake, 0.0, dt * 2.4)
-	var c := cam.get_screen_center_position()
-	Game.gset("g_cam", Vector4(c.x, c.y, cam.zoom.x, 0.0))
-	world.sync_camera(c, cam.zoom.x)
+	var view := get_viewport().get_visible_rect().size
+	var sc := Vector2(cam_zoom, cam_zoom * SeaScene3D.SIN_P)
+	var vc := cam_pos + cam_offset / sc
+	var half := view / (2.0 * sc)
+	var world_size := Vector2(WorldGen.WORLD_W, WorldGen.WORLD_H)
+	for axis in 2:
+		if world_size[axis] > half[axis] * 2.0:
+			vc[axis] = clampf(vc[axis], half[axis], world_size[axis] - half[axis])
+		else:
+			vc[axis] = world_size[axis] * 0.5
+	view_center = vc
+	var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * rough * 14.0
+	# The 2D overlay (points of interest, particles, wildlife) is this node.
+	scale = sc
+	position = view * 0.5 - vc * sc + jitter
+	Game.gset("g_cam", Vector4(vc.x, vc.y, cam_zoom, SeaScene3D.SIN_P))
+	scene3d.update(dt, ship.position, ship.heading, spd, ship.wind.rotated(-ship.heading), ship.heel, vc - jitter / sc, cam_zoom, view, weather.cur, weather.cur["night"])
 
 
 func _update_fx(dt: float) -> void:
@@ -290,7 +301,7 @@ func _update_fx(dt: float) -> void:
 	_spray_t -= dt
 	if spd > 0.35 and _spray_t <= 0.0:
 		_spray_t = lerpf(0.09, 0.03, spd)
-		var bow := ship.position + fwd * (ShipVisual.HL - 6.0)
+		var bow := ship.position + fwd * 76.0
 		fx.spray(bow + fwd.rotated(PI * 0.5) * randf_range(-6, 6), fwd.rotated(randf_range(-1.2, 1.2)), 1)
 	# Foam bubbles drifting in the wake.
 	if spd > 0.2 and randf() < 0.6 + spd:
@@ -305,8 +316,8 @@ func _update_fx(dt: float) -> void:
 
 
 func _update_atmosphere() -> void:
-	var c := cam.get_screen_center_position()
-	var z := cam.zoom.x
+	var c := view_center
+	var z := cam_zoom
 	var view := get_viewport().get_visible_rect().size
 	atmosphere.begin_frame()
 	var fwd := Vector2.from_angle(ship.heading)
@@ -341,7 +352,7 @@ func _update_atmosphere() -> void:
 
 
 func _to_screen(w: Vector2, c: Vector2, z: float, view: Vector2) -> Vector2:
-	return (w - c) * z + view * 0.5
+	return (w - c) * Vector2(z, z * SeaScene3D.SIN_P) + view * 0.5
 
 
 # ------------------------------------------------------------------ gameplay events
@@ -473,8 +484,8 @@ func _update_whirlpools(dt: float) -> void:
 
 func teleport(pos: Vector2) -> void:
 	ship.place(pos, ship.heading)
-	cam.position = pos
-	wake.clear()
+	cam_pos = pos
+	scene3d.wake.clear()
 
 
 func nearest_poi_dir(kinds: Array = []) -> Poi:
