@@ -1,0 +1,21 @@
+# Godot
+.godot/
+*.translation
+.import/
+export.cfg
+.mono/
+data_*/
+mono_crash.*.json
+
+# Android build output and secrets (never commit keystores)
+/android/
+build/
+*.keystore
+*.jks
+*.apk
+*.aab
+local.properties
+
+# Local scratch
+*.tmp
+.DS_Store

@@ -1,0 +1,47 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+
+config_version=5
+
+[application]
+
+config/name="Salt & Sail"
+config/description="A top-down pirate exploration roguelite."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/max_fps=60
+boot_splash/bg_color=Color(0.027, 0.074, 0.122, 1)
+boot_splash/show_image=false
+config/icon="res://icon.png"
+config/quit_on_go_back=false
+config/version="0.1.0"
+
+[autoload]
+
+Game="*res://scripts/autoload/game.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+Dev="*res://scripts/autoload/dev.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.027, 0.074, 0.122, 1)
+2d/snap/snap_2d_transforms_to_pixel=false
+anti_aliasing/quality/msaa_2d=0
