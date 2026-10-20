@@ -146,8 +146,8 @@ func _draw_dolphin(d: Dictionary, fade: float) -> void:
 	var pos: Vector2 = d["pos"]
 	var n := dir.rotated(PI * 0.5)
 	var scale_f := 1.0 + 0.4 * h
-	var length := 46.0 * scale_f
-	var width := 9.0 * scale_f
+	var length := 54.0 * scale_f
+	var width := 15.0 * scale_f
 	var alpha := (1.0 if h > 0.0 else 0.28) * fade
 	if h > 0.0:
 		var sh := pos + Vector2(10, 18) * h

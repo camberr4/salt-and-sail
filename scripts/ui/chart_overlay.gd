@@ -43,18 +43,18 @@ func _ready() -> void:
 	v.add_child(row)
 	for spec in [["+", 0.7], ["-", 1.4]]:
 		var z := UiKit.button(spec[0], false, 84.0)
-		z.custom_minimum_size.y = 66
+		z.custom_minimum_size.y = 84
 		var f: float = spec[1]
 		z.pressed.connect(func(): chart.zoom_by(f))
 		row.add_child(z)
-	var me := UiKit.button("Find ship", false, 220.0)
-	me.custom_minimum_size.y = 66
-	me.add_theme_font_size_override("font_size", 28)
+	var me := UiKit.button("Find ship", false, 250.0)
+	me.custom_minimum_size.y = 84
+	me.add_theme_font_size_override("font_size", 32)
 	me.pressed.connect(func(): chart.center_on_ship())
 	row.add_child(me)
-	var close := UiKit.button("Close", true, 220.0)
-	close.custom_minimum_size.y = 70
-	close.add_theme_font_size_override("font_size", 34)
+	var close := UiKit.button("Close", true, 240.0)
+	close.custom_minimum_size.y = 90
+	close.add_theme_font_size_override("font_size", 40)
 	close.pressed.connect(func(): closed.emit())
 	row.add_child(close)
 	chart.resized.connect(func(): chart.show_whole_world())

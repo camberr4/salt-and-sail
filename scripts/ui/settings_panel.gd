@@ -36,7 +36,7 @@ func _ready() -> void:
 func _row(text: String) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 20)
-	var l := UiKit.body(text, 30)
+	var l := UiKit.body(text, 34)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.custom_minimum_size.x = 330
 	h.add_child(l)
@@ -50,7 +50,7 @@ func _slider(text: String, key: String, lo: float = 0.0, hi: float = 1.0) -> HBo
 	s.max_value = hi
 	s.step = 0.05
 	s.value = float(Game.settings[key])
-	s.custom_minimum_size = Vector2(300, 44)
+	s.custom_minimum_size = Vector2(300, 60)
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.value_changed.connect(func(v: float):
 		Game.set_setting(key, v)
@@ -61,9 +61,9 @@ func _slider(text: String, key: String, lo: float = 0.0, hi: float = 1.0) -> HBo
 
 func _toggle(text: String, key: String) -> HBoxContainer:
 	var h := _row(text)
-	var b := UiKit.button("", false, 160.0)
-	b.custom_minimum_size.y = 58
-	b.add_theme_font_size_override("font_size", 28)
+	var b := UiKit.button("", false, 180.0)
+	b.custom_minimum_size.y = 72
+	b.add_theme_font_size_override("font_size", 32)
 	var upd := func(): b.text = "On" if Game.settings[key] else "Off"
 	upd.call()
 	b.pressed.connect(func():
@@ -78,9 +78,9 @@ func _quality() -> HBoxContainer:
 	var group := ButtonGroup.new()
 	var names := ["Low", "Medium", "High"]
 	for i in 3:
-		var b := UiKit.button(names[i], false, 120.0)
-		b.custom_minimum_size.y = 58
-		b.add_theme_font_size_override("font_size", 26)
+		var b := UiKit.button(names[i], false, 140.0)
+		b.custom_minimum_size.y = 72
+		b.add_theme_font_size_override("font_size", 30)
 		b.toggle_mode = true
 		b.button_group = group
 		b.button_pressed = int(Game.settings["quality"]) == i

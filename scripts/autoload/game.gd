@@ -65,6 +65,8 @@ func _ready() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		# First launch: pick a sensible quality tier.
 		settings["quality"] = 1 if OS.has_feature("mobile") else 2
+	if Dev.has("quality"):
+		settings["quality"] = int(Dev.get_num("quality"))
 	apply_settings()
 	get_tree().set_auto_accept_quit(false)
 	DisplayServer.screen_set_keep_on(true)
@@ -241,12 +243,12 @@ func _button_box(fill: Color, border: Color, shadow: Color) -> StyleBoxFlat:
 
 
 func _knob_texture() -> Texture2D:
-	var img := Image.create(44, 44, false, Image.FORMAT_RGBA8)
-	for y in 44:
-		for x in 44:
-			var d := Vector2(x + 0.5, y + 0.5).distance_to(Vector2(22, 22))
-			var a := clampf(21.0 - d, 0.0, 1.0)
-			var ring := clampf(d - 14.0, 0.0, 1.0)
+	var img := Image.create(56, 56, false, Image.FORMAT_RGBA8)
+	for y in 56:
+		for x in 56:
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(Vector2(28, 28))
+			var a := clampf(27.0 - d, 0.0, 1.0)
+			var ring := clampf(d - 18.0, 0.0, 1.0)
 			var c := UI_GOLD.lerp(Color("7a4f1d"), ring)
 			c.a = a
 			img.set_pixel(x, y, c)

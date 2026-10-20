@@ -10,6 +10,7 @@ signal gold_changed(total: int)
 signal rumor_added(poi: Poi)
 signal weather_changed(state: int)
 signal weather_warning(next_state: int)
+signal edge_reached
 
 const VISION := 900.0
 
@@ -47,6 +48,7 @@ var _flare_pos := Vector2.ZERO
 var _flare_tick := 0.0
 var _creak_t := 6.0
 var _whirl_cd := 0.0
+var _edge_cd := 0.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -159,6 +161,10 @@ func _finish_world() -> void:
 		weather.locked = true
 	if Dev.has("reveal"):
 		world.set_reveal_all(true)
+	if Dev.has("discoverall"):
+		for p in pois:
+			p.discover()
+			p.appear = 1.0
 	loading = false
 	world_ready.emit()
 
@@ -182,6 +188,7 @@ func _process(delta: float) -> void:
 	ship.steer = steer
 	ship.tick(dt)
 	_update_whirlpools(dt)
+	_update_edge(dt)
 	_update_vision(dt)
 	_update_pois(dt)
 	_update_camera(dt)
@@ -192,6 +199,17 @@ func _process(delta: float) -> void:
 	ambient.update(dt, ship.position, Vector2.from_angle(ship.heading))
 	_update_atmosphere()
 	Sfx.update_mix(weather.cur, ship.speed / Ship.MAX_SPEED, shake)
+
+
+func _update_edge(dt: float) -> void:
+	_edge_cd = maxf(0.0, _edge_cd - dt)
+	if title_mode or _edge_cd > 0.0:
+		return
+	var p := ship.position
+	var d := minf(minf(p.x, p.y), minf(WorldGen.WORLD_W - p.x, WorldGen.WORLD_H - p.y))
+	if d < 420.0:
+		_edge_cd = 25.0
+		edge_reached.emit()
 
 
 func _update_vision(dt: float) -> void:
@@ -249,10 +267,14 @@ func _update_camera(dt: float) -> void:
 	var target := ship.position + ship.velocity * 0.5
 	cam.position = cam.position.lerp(target, 1.0 - exp(-3.0 * dt))
 	var rough := shake + storm * 0.12
-	cam.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * rough * 14.0
+	# The ship sits below the middle of the screen so there is room to see
+	# where it is heading (and for banners above it).
+	var framing := Vector2.ZERO if title_mode else Vector2(0.0, -230.0)
+	cam.offset = cam.offset.lerp(framing, 1.0 - exp(-4.0 * dt)) if rough < 0.01 else framing + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * rough * 14.0
 	shake = move_toward(shake, 0.0, dt * 2.4)
 	var c := cam.get_screen_center_position()
 	Game.gset("g_cam", Vector4(c.x, c.y, cam.zoom.x, 0.0))
+	world.sync_camera(c, cam.zoom.x)
 
 
 func _update_fx(dt: float) -> void:

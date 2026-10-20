@@ -25,9 +25,10 @@ var _margin := Vector4(30, 24, 30, 24)
 var _sb_chip: StyleBoxFlat
 var _sb_card: StyleBoxFlat
 var _hint_timer := 0.0
+var _card_bottom := 0.0
 var _hints_done := {}
 
-const MM_SIZE := 240.0
+const MM_SIZE := 270.0
 
 
 func _ready() -> void:
@@ -36,10 +37,10 @@ func _ready() -> void:
 	_sb_chip = _make_box(18, 0.93)
 	_sb_card = _make_box(26, 0.97)
 
-	pause_btn = IconButton.new("pause", 38.0)
+	pause_btn = IconButton.new("pause", 54.0)
 	add_child(pause_btn)
 	pause_btn.pressed.connect(func(): pause_pressed.emit())
-	chart_btn = IconButton.new("scroll", 38.0)
+	chart_btn = IconButton.new("scroll", 54.0)
 	add_child(chart_btn)
 	chart_btn.pressed.connect(func(): chart_pressed.emit())
 
@@ -88,8 +89,8 @@ func _layout() -> void:
 	_margin = safe_margins()
 	var right := size.x - _margin.z
 	pause_btn.position = Vector2(right - pause_btn.size.x, _margin.y)
-	chart_btn.position = Vector2(pause_btn.position.x - chart_btn.size.x - 16.0, _margin.y)
-	minimap.position = Vector2(right - MM_SIZE, _margin.y + pause_btn.size.y + 18.0)
+	chart_btn.position = Vector2(pause_btn.position.x - chart_btn.size.x - 14.0, _margin.y)
+	minimap.position = Vector2(right - MM_SIZE - 6.0, _margin.y + pause_btn.size.y + 26.0)
 	fps_label.position = Vector2(_margin.x, size.y - _margin.w - 34.0)
 
 
@@ -110,6 +111,7 @@ func bind(p_sea: Sea) -> void:
 		sea.weather_changed.connect(_on_weather)
 		sea.weather_warning.connect(_on_warning)
 		sea.rumor_added.connect(func(_p): pass)
+		sea.edge_reached.connect(func(): banner("The edge of the chart", "compass", "Nothing but mist beyond. Turn back, captain.", 4.5))
 
 
 func blockers() -> Array[Control]:
@@ -215,63 +217,65 @@ func _draw() -> void:
 	var m := _margin
 	# Gold chip.
 	var gp := 1.0 + 0.12 * sin(minf(_gold_pop, 1.0) * PI)
-	var gr := Rect2(m.x, m.y, 250.0, 64.0)
+	var gr := Rect2(m.x, m.y, 310.0, 84.0)
 	draw_style_box(_sb_chip, gr)
-	UiIcons.draw(self, "coin", gr.position + Vector2(38, 32), 22.0 * gp)
-	draw_string(font, gr.position + Vector2(76, 43), str(int(round(_gold_shown))), HORIZONTAL_ALIGNMENT_LEFT, -1, int(38 * gp), UiIcons.INK)
+	UiIcons.draw(self, "coin", gr.position + Vector2(46, 42), 28.0 * gp)
+	draw_string(font, gr.position + Vector2(92, 58), str(int(round(_gold_shown))), HORIZONTAL_ALIGNMENT_LEFT, -1, int(48 * gp), UiIcons.INK)
 	# Chart progress chip.
-	var cr := Rect2(m.x, m.y + 78.0, 250.0, 64.0)
+	var cr := Rect2(m.x, m.y + 98.0, 310.0, 96.0)
 	draw_style_box(_sb_chip, cr)
-	UiIcons.draw(self, "compass", cr.position + Vector2(38, 32), 22.0)
-	draw_string(font, cr.position + Vector2(74, 30), "Charted", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0.35, 0.22, 0.12))
-	draw_string(font, cr.position + Vector2(168, 30), "%d%%" % int(round(_chart_shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, UiIcons.INK)
-	var bar := Rect2(cr.position + Vector2(74, 40), Vector2(160, 10))
+	UiIcons.draw(self, "compass", cr.position + Vector2(46, 48), 28.0)
+	draw_string(font, cr.position + Vector2(90, 40), "Charted", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(0.35, 0.22, 0.12))
+	draw_string(font, cr.position + Vector2(220, 40), "%d%%" % int(round(_chart_shown)), HORIZONTAL_ALIGNMENT_LEFT, -1, 34, UiIcons.INK)
+	var bar := Rect2(cr.position + Vector2(90, 56), Vector2(194, 14))
 	draw_rect(bar, Color(0.35, 0.22, 0.12, 0.35))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(_chart_shown / 100.0, 0.0, 1.0), bar.size.y)), Color("2a7f62"))
-	draw_rect(bar, Color("5a3a1e"), false, 2.0)
+	draw_rect(bar, Color("5a3a1e"), false, 2.5)
 	# Places found.
-	draw_string(font, Vector2(m.x + 6.0, m.y + 176.0), "Found %d" % sea.stats_pois_found, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, 0.9))
+	var ft := "Found %d" % sea.stats_pois_found
+	draw_string(font, Vector2(m.x + 8.0 + 2, m.y + 244.0 + 2), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0, 0, 0, 0.5))
+	draw_string(font, Vector2(m.x + 8.0, m.y + 244.0), ft, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(1, 1, 1, 0.95))
 
 	# Minimap bezel.
 	var mc := minimap.position + minimap.size * 0.5
 	draw_circle(mc + Vector2(0, 4), MM_SIZE * 0.5 + 8.0, Color(0, 0, 0, 0.3))
-	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("5a3a1e"), 10.0, true)
-	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("e8b64a"), 4.0, true)
+	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("5a3a1e"), 12.0, true)
+	draw_arc(mc, MM_SIZE * 0.5 + 2.0, 0.0, TAU, 64, Color("e8b64a"), 5.0, true)
 	var wa: float = sea.weather.wind.angle()
 	# North marker on the bezel.
 	draw_colored_polygon(PackedVector2Array([mc + Vector2(0, -MM_SIZE * 0.5 - 16.0), mc + Vector2(-8, -MM_SIZE * 0.5 - 2.0), mc + Vector2(8, -MM_SIZE * 0.5 - 2.0)]), Color("b23a2b"))
 
 	# Weather badge, bottom right.
-	var br := Vector2(size.x - m.z - 52.0, size.y - m.w - 52.0)
+	var br := Vector2(size.x - m.z - 66.0, size.y - m.w - 66.0)
 	var pop := 1.0 + 0.2 * sin(minf(_weather_pop, 1.0) * PI)
-	draw_circle(br + Vector2(0, 4), 50.0, Color(0, 0, 0, 0.3))
-	draw_circle(br, 48.0, Color("5a3a1e"))
+	draw_circle(br + Vector2(0, 4), 64.0, Color(0, 0, 0, 0.3))
+	draw_circle(br, 62.0, Color("5a3a1e"))
 	var bg := [Color("5db4e8"), Color("8e9ca6"), Color("5b7185"), Color("3a4658"), Color("16254a")]
-	draw_circle(br, 44.0, bg[_weather_state])
-	draw_arc(br, 44.0, 0.0, TAU, 32, Color("e8b64a"), 3.0, true)
+	draw_circle(br, 57.0, bg[_weather_state])
+	draw_arc(br, 57.0, 0.0, TAU, 40, Color("e8b64a"), 4.0, true)
 	var icons := ["sun", "fog", "rain", "storm", "moon"]
-	UiIcons.draw(self, icons[_weather_state], br, 30.0 * pop, UiIcons.INK, _t)
+	UiIcons.draw(self, icons[_weather_state], br, 38.0 * pop, UiIcons.INK, _t)
 	var wname: String = Weather.NAMES[_weather_state]
-	var ww := font.get_string_size(wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
-	draw_string(font, br + Vector2(-62.0 - ww + 2, 10 + 2), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0, 0, 0, 0.55))
-	draw_string(font, br + Vector2(-62.0 - ww, 10), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color.WHITE)
+	var ww := font.get_string_size(wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36).x
+	draw_string(font, br + Vector2(-80.0 - ww + 2, 12 + 2), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color(0, 0, 0, 0.55))
+	draw_string(font, br + Vector2(-80.0 - ww, 12), wname, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, Color.WHITE)
 	# Wind dial.
-	var wc := br + Vector2(0, -104.0)
-	draw_circle(wc, 30.0, Color(0, 0.05, 0.1, 0.5))
-	draw_arc(wc, 30.0, 0.0, TAU, 28, Color("e8b64a"), 2.5, true)
+	var wc := br + Vector2(0, -134.0)
+	draw_circle(wc, 40.0, Color(0, 0.05, 0.1, 0.55))
+	draw_arc(wc, 40.0, 0.0, TAU, 32, Color("e8b64a"), 3.5, true)
 	var ws := clampf(sea.weather.wind.length(), 0.0, 1.2)
 	var wdir := Vector2.from_angle(wa)
-	var tip := wc + wdir * (10.0 + 14.0 * ws)
-	draw_line(wc - wdir * 12.0, tip, Color(0.9, 0.97, 1.0), 3.0, true)
-	draw_colored_polygon(PackedVector2Array([tip + wdir * 7.0, tip + wdir.rotated(2.4) * 8.0, tip + wdir.rotated(-2.4) * 8.0]), Color(0.9, 0.97, 1.0))
-	draw_string(font, wc + Vector2(-17, 54), "Wind", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1, 1, 1, 0.85))
+	var tip := wc + wdir * (13.0 + 19.0 * ws)
+	draw_line(wc - wdir * 16.0, tip, Color(0.9, 0.97, 1.0), 4.0, true)
+	draw_colored_polygon(PackedVector2Array([tip + wdir * 9.0, tip + wdir.rotated(2.4) * 10.0, tip + wdir.rotated(-2.4) * 10.0]), Color(0.9, 0.97, 1.0))
+	draw_string(font, wc + Vector2(-26, 70), "Wind", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(1, 1, 1, 0.9))
 
 	_draw_banners(font, title_font)
 	_draw_card(font, title_font)
 
 
 func _draw_banners(font: Font, title_font: Font) -> void:
-	var y := _margin.y + 395.0
+	var y := maxf(_margin.y + 440.0, _card_bottom + 16.0)
 	var cx := size.x * 0.5
 	for b in _banners:
 		var t: float = b["t"]
@@ -280,21 +284,22 @@ func _draw_banners(font: Font, title_font: Font) -> void:
 		var e := 1.0 - pow(1.0 - k, 3.0)
 		var text: String = b["text"]
 		var sub: String = b["sub"]
-		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
-		var sw := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x if sub != "" else 0.0
-		var w := minf(maxf(tw, sw) + 120.0, size.x - 50.0)
-		var h := 66.0 if sub == "" else 94.0
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x
+		var sw := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x if sub != "" else 0.0
+		var w := minf(maxf(tw, sw) + 140.0, size.x - 50.0)
+		var h := 84.0 if sub == "" else 120.0
 		var r := Rect2(cx - w * 0.5, y - (1.0 - e) * (h + 40.0), w, h)
 		draw_style_box(_sb_chip, r)
-		UiIcons.draw(self, b["icon"], r.position + Vector2(48, h * 0.5), 24.0, UiIcons.INK, _t)
-		draw_string(font, r.position + Vector2(90, 42 if sub == "" else 38), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, UiIcons.INK)
+		UiIcons.draw(self, b["icon"], r.position + Vector2(52, h * 0.5), 28.0, UiIcons.INK, _t)
+		draw_string(font, r.position + Vector2(100, 54 if sub == "" else 50), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, UiIcons.INK)
 		if sub != "":
-			draw_string(font, r.position + Vector2(90, 72), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0.35, 0.22, 0.12))
+			draw_string(font, r.position + Vector2(100, 92), sub, HORIZONTAL_ALIGNMENT_LEFT, w - 120.0, 28, Color(0.35, 0.22, 0.12))
 		y += (h + 12.0) * e
 
 
 func _draw_card(font: Font, title_font: Font) -> void:
 	if _card.is_empty():
+		_card_bottom = 0.0
 		return
 	var t: float = _card["t"]
 	var dur: float = _card["dur"]
@@ -302,25 +307,26 @@ func _draw_card(font: Font, title_font: Font) -> void:
 	var e := 1.0 - pow(1.0 - k, 3.0)
 	var width := minf(size.x - 70.0, 940.0)
 	var text: String = _card["text"]
-	var text_size := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 28)
+	var text_size := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 34)
 	var rumor: String = _card["rumor"]
-	var rumor_size := font.get_multiline_string_size(rumor, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 26) if rumor != "" else Vector2.ZERO
-	var h := 130.0 + text_size.y + 24.0 + (rumor_size.y + 34.0 if rumor != "" else 0.0) + (76.0 if int(_card["gold"]) > 0 else 12.0)
-	var base_y := size.y * 0.31 - h * 0.5
+	var rumor_size := font.get_multiline_string_size(rumor, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 32) if rumor != "" else Vector2.ZERO
+	var h := 150.0 + text_size.y + 24.0 + (rumor_size.y + 34.0 if rumor != "" else 0.0) + (92.0 if int(_card["gold"]) > 0 else 16.0)
+	var base_y := size.y * 0.345 - h * 0.5
 	var r := Rect2(size.x * 0.5 - width * 0.5, base_y + (1.0 - e) * 60.0, width, h)
+	_card_bottom = r.end.y
 	draw_style_box(_sb_card, r)
-	draw_arc(r.position + Vector2(64, 62), 38.0, 0.0, TAU, 32, Color("e8b64a"), 4.0, true)
-	draw_circle(r.position + Vector2(64, 62), 36.0, Color("d9c08a"))
-	UiIcons.draw(self, _card["icon"], r.position + Vector2(64, 62), 24.0, UiIcons.INK, _t)
-	draw_string(title_font, r.position + Vector2(120, 78), _card["title"], HORIZONTAL_ALIGNMENT_LEFT, width - 150.0, 50, UiIcons.INK)
-	draw_multiline_string(font, r.position + Vector2(40, 130), text, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 28, -1, Color(0.2, 0.12, 0.07))
-	var y := 130.0 + text_size.y + 16.0
+	draw_arc(r.position + Vector2(72, 70), 44.0, 0.0, TAU, 32, Color("e8b64a"), 4.0, true)
+	draw_circle(r.position + Vector2(72, 70), 42.0, Color("d9c08a"))
+	UiIcons.draw(self, _card["icon"], r.position + Vector2(72, 70), 28.0, UiIcons.INK, _t)
+	draw_string(title_font, r.position + Vector2(136, 88), _card["title"], HORIZONTAL_ALIGNMENT_LEFT, width - 170.0, 62, UiIcons.INK)
+	draw_multiline_string(font, r.position + Vector2(40, 152), text, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 34, -1, Color(0.2, 0.12, 0.07))
+	var y := 150.0 + text_size.y + 16.0
 	if rumor != "":
-		draw_multiline_string(font, r.position + Vector2(40, y + 22.0), rumor, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 26, -1, Color(0.5, 0.18, 0.12))
-		y += rumor_size.y + 26.0
+		draw_multiline_string(font, r.position + Vector2(40, y + 26.0), rumor, HORIZONTAL_ALIGNMENT_LEFT, width - 80.0, 32, -1, Color(0.5, 0.18, 0.12))
+		y += rumor_size.y + 34.0
 	if int(_card["gold"]) > 0:
-		var cw := 190.0
-		var cr := Rect2(r.position.x + width * 0.5 - cw * 0.5, r.position.y + y + 4.0, cw, 50.0)
+		var cw := 230.0
+		var cr := Rect2(r.position.x + width * 0.5 - cw * 0.5, r.position.y + y + 6.0, cw, 64.0)
 		draw_style_box(_sb_chip, cr)
-		UiIcons.draw(self, "coin", cr.position + Vector2(32, 25), 18.0)
-		draw_string(font, cr.position + Vector2(62, 35), "+%d" % int(_card["gold"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 32, UiIcons.INK)
+		UiIcons.draw(self, "coin", cr.position + Vector2(38, 32), 22.0)
+		draw_string(font, cr.position + Vector2(76, 46), "+%d" % int(_card["gold"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 42, UiIcons.INK)

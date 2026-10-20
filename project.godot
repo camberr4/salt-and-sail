@@ -19,9 +19,9 @@ config/version="0.1.0"
 
 [autoload]
 
+Dev="*res://scripts/autoload/dev.gd"
 Game="*res://scripts/autoload/game.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
-Dev="*res://scripts/autoload/dev.gd"
 
 [display]
 

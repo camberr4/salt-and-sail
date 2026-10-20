@@ -17,7 +17,7 @@ func _init(p_kind: String = "pause", p_radius: float = 36.0, p_label: String = "
 	kind = p_kind
 	_radius = p_radius
 	label = p_label
-	custom_minimum_size = Vector2.ONE * p_radius * 2.0
+	custom_minimum_size = Vector2.ONE * (p_radius * 2.0 + 16.0)
 	size = custom_minimum_size
 	mouse_filter = Control.MOUSE_FILTER_STOP
 

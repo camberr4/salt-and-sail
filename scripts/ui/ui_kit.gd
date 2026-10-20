@@ -39,7 +39,7 @@ static func title(text: String, size: int = 72) -> Label:
 	return l
 
 
-static func body(text: String, size: int = 28, color: Color = Color("3a2515")) -> Label:
+static func body(text: String, size: int = 34, color: Color = Color("3a2515")) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -53,7 +53,7 @@ static func body(text: String, size: int = 28, color: Color = Color("3a2515")) -
 static func button(text: String, primary: bool = false, min_w: float = 420.0) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(min_w, 84 if primary else 72)
+	b.custom_minimum_size = Vector2(min_w, 104 if primary else 88)
 	b.focus_mode = Control.FOCUS_NONE
 	if primary:
 		b.add_theme_stylebox_override("normal", _btn(Color("e8b64a"), Color("8a5a1c")))
@@ -62,12 +62,12 @@ static func button(text: String, primary: bool = false, min_w: float = 420.0) ->
 		b.add_theme_color_override("font_color", Color("2b1d12"))
 		b.add_theme_color_override("font_hover_color", Color("2b1d12"))
 		b.add_theme_color_override("font_pressed_color", Color("2b1d12"))
-		b.add_theme_font_size_override("font_size", 44)
+		b.add_theme_font_size_override("font_size", 52)
 	else:
 		b.add_theme_stylebox_override("normal", _btn(Color("6d4624"), Color("3a2310")))
 		b.add_theme_stylebox_override("hover", _btn(Color("825a30"), Color("3a2310")))
 		b.add_theme_stylebox_override("pressed", _btn(Color("4a2f17"), Color("2a180a"), true))
-		b.add_theme_font_size_override("font_size", 34)
+		b.add_theme_font_size_override("font_size", 40)
 	b.pressed.connect(func(): Sfx.play("click", -3.0); Game.haptic(12, 0.3))
 	return b
 

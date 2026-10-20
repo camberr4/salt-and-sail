@@ -20,6 +20,7 @@ var _frames := 0
 var _shot_frame := 0
 var _opened_dev_ui := false
 var _from_pause := false
+var _perf_t0 := 0
 
 
 func _ready() -> void:
@@ -356,6 +357,28 @@ func _dev_hooks() -> void:
 			Input.parse_input_event(d)
 		if _frames % 20 == 0:
 			print("f=", _frames, " joy=", joystick.get_vector(), " heading=", snappedf(sea.ship.heading, 0.01), " speed=", snappedf(sea.ship.speed, 0.1))
+	if Dev.get_str("do", "") == "cycle":
+		# Exercise the whole flow: voyage -> log -> new voyage -> log -> title.
+		match _frames:
+			60:
+				if state == S.VOYAGE: end_voyage()
+			90:
+				if state == S.SUMMARY: summary.again.emit()
+			400:
+				if state == S.VOYAGE: end_voyage()
+			430:
+				if state == S.SUMMARY: summary.menu.emit()
+		if _frames % 30 == 0:
+			print("cycle f=", _frames, " state=", state)
+	if Dev.has("dolphins") and _frames == 30:
+		for i in 3:
+			sea.ambient._try_spawn_pod(Vector2.from_angle(sea.ship.heading))
+		sea.ambient._try_spawn_gulls()
+	if Dev.has("perf"):
+		if _frames == 60:
+			_perf_t0 = Time.get_ticks_usec()
+		elif _frames == 260:
+			print("avg frame ms: ", snappedf((Time.get_ticks_usec() - _perf_t0) / 200000.0, 0.1), " quality=", Game.settings["quality"])
 	if Dev.has("dbg") and _frames == 40:
 		print("vp ", get_viewport().get_visible_rect().size, " ui_root ", hud.get_parent().size, " hud ", hud.size, " title ", title.size, " joystick ", joystick.size)
 	if Dev.has("shot"):

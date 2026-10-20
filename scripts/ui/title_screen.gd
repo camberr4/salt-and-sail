@@ -19,8 +19,13 @@ func _ready() -> void:
 	# Soft darkening at the top and bottom keeps text readable over any sea.
 	for flip in [false, true]:
 		var g := Gradient.new()
-		g.set_color(0, Color(0.01, 0.05, 0.09, 0.0 if flip else 0.72))
-		g.set_color(1, Color(0.01, 0.05, 0.09, 0.78 if flip else 0.0))
+		var dark := Color(0.01, 0.05, 0.09)
+		if flip:
+			g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+			g.colors = PackedColorArray([Color(dark, 0.0), Color(dark, 0.35), Color(dark, 0.82)])
+		else:
+			g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+			g.colors = PackedColorArray([Color(dark, 0.8), Color(dark, 0.45), Color(dark, 0.0)])
 		var gt := GradientTexture2D.new()
 		gt.gradient = g
 		gt.fill_from = Vector2(0, 0)
@@ -28,12 +33,13 @@ func _ready() -> void:
 		var tr := TextureRect.new()
 		tr.texture = gt
 		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		if flip:
 			tr.anchor_top = 0.55
 		else:
-			tr.anchor_bottom = 0.45
+			tr.anchor_bottom = 0.5
 		tr.offset_top = 0
 		tr.offset_bottom = 0
 		add_child(tr)

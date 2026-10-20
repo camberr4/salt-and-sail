@@ -17,7 +17,7 @@ var _alpha := 0.0
 var _hint_alpha := 1.0
 var _used := false
 var _t := 0.0
-var _radius := 120.0
+var _radius := 170.0
 
 
 func _ready() -> void:
@@ -28,7 +28,7 @@ func _ready() -> void:
 
 
 func _update_radius() -> void:
-	_radius = 120.0 * float(Game.settings["joystick_size"])
+	_radius = 170.0 * float(Game.settings["joystick_size"])
 
 
 func _input(event: InputEvent) -> void:
@@ -98,38 +98,40 @@ func _draw() -> void:
 	if _alpha > 0.01:
 		_draw_stick(_origin, _knob, _alpha, _radius)
 	if _hint_alpha > 0.01:
-		var r := 120.0 * float(Game.settings["joystick_size"])
+		var r := 170.0 * float(Game.settings["joystick_size"])
 		var base := Vector2(size.x * 0.5, size.y * 0.76)
 		var k := Vector2.from_angle(_t * 1.2) * r * 0.45 * (0.5 + 0.5 * sin(_t * 0.8))
 		_draw_stick(base, k, _hint_alpha * 0.55, r)
 		var font := Game.body_font_bold
 		var text := "Touch and drag to steer"
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 32).x
-		draw_string(font, base + Vector2(-w * 0.5 + 2, r + 56 + 2), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color(0, 0, 0, 0.5 * _hint_alpha))
-		draw_string(font, base + Vector2(-w * 0.5, r + 56), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color(Game.UI_PARCHMENT, _hint_alpha))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 40).x
+		draw_string(font, base + Vector2(-w * 0.5 + 2, r + 70 + 2), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(0, 0, 0, 0.5 * _hint_alpha))
+		draw_string(font, base + Vector2(-w * 0.5, r + 70), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(Game.UI_PARCHMENT, _hint_alpha))
 
 
 func _draw_stick(origin: Vector2, knob: Vector2, a: float, r: float) -> void:
+	var k := r / 120.0
 	# Base: dark glass disc, brass rim and compass ticks.
 	draw_circle(origin, r + 6.0, Color(0, 0, 0, 0.18 * a))
 	draw_circle(origin, r, Color(0.04, 0.1, 0.16, 0.38 * a))
-	draw_arc(origin, r, 0.0, TAU, 56, Color(Game.UI_GOLD, 0.8 * a), 4.0, true)
-	draw_arc(origin, r * 0.62, 0.0, TAU, 40, Color(Game.UI_GOLD, 0.25 * a), 2.0, true)
+	draw_arc(origin, r, 0.0, TAU, 64, Color(Game.UI_GOLD, 0.8 * a), 5.0, true)
+	draw_arc(origin, r * 0.62, 0.0, TAU, 48, Color(Game.UI_GOLD, 0.25 * a), 2.5, true)
 	for i in 16:
 		var ang := TAU * i / 16.0
-		var len := 14.0 if i % 4 == 0 else 7.0
-		draw_line(origin + Vector2.from_angle(ang) * (r - 3.0), origin + Vector2.from_angle(ang) * (r - 3.0 - len), Color(Game.UI_GOLD, 0.7 * a), 2.0)
+		var len := (14.0 if i % 4 == 0 else 7.0) * k
+		draw_line(origin + Vector2.from_angle(ang) * (r - 4.0), origin + Vector2.from_angle(ang) * (r - 4.0 - len), Color(Game.UI_GOLD, 0.7 * a), 2.5)
 	# Power ring brightens as you push harder.
 	var power := clampf(knob.length() / r, 0.0, 1.0)
 	if power > 0.05:
-		draw_arc(origin, r * 0.62 + power * 6.0, knob.angle() - 0.5, knob.angle() + 0.5, 12, Color(1, 0.9, 0.5, 0.6 * a * power), 6.0, true)
+		draw_arc(origin, r * 0.62 + power * 8.0, knob.angle() - 0.5, knob.angle() + 0.5, 12, Color(1, 0.9, 0.5, 0.6 * a * power), 7.0, true)
 	# Knob.
+	var kr := r * 0.32
 	var kp := origin + knob
-	draw_circle(kp + Vector2(0, 5), 38.0, Color(0, 0, 0, 0.3 * a))
-	draw_circle(kp, 38.0, Color(0.55, 0.36, 0.14, a))
-	draw_circle(kp, 33.0, Color(0.95, 0.74, 0.3, a))
-	draw_circle(kp + Vector2(-6, -7), 20.0, Color(1.0, 0.88, 0.55, 0.9 * a))
-	draw_arc(kp, 33.0, 0.0, TAU, 32, Color(0.4, 0.25, 0.08, 0.8 * a), 2.0, true)
+	draw_circle(kp + Vector2(0, 6), kr, Color(0, 0, 0, 0.3 * a))
+	draw_circle(kp, kr, Color(0.55, 0.36, 0.14, a))
+	draw_circle(kp, kr * 0.87, Color(0.95, 0.74, 0.3, a))
+	draw_circle(kp + Vector2(-kr * 0.16, -kr * 0.18), kr * 0.52, Color(1.0, 0.88, 0.55, 0.9 * a))
+	draw_arc(kp, kr * 0.87, 0.0, TAU, 32, Color(0.4, 0.25, 0.08, 0.8 * a), 2.5, true)
 	if power > 0.08:
 		var d := knob.normalized()
-		draw_colored_polygon(PackedVector2Array([kp + d * 24.0, kp + d.rotated(2.5) * 12.0, kp + d.rotated(-2.5) * 12.0]), Color(0.4, 0.22, 0.06, 0.85 * a))
+		draw_colored_polygon(PackedVector2Array([kp + d * kr * 0.63, kp + d.rotated(2.5) * kr * 0.32, kp + d.rotated(-2.5) * kr * 0.32]), Color(0.4, 0.22, 0.06, 0.85 * a))
